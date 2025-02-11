@@ -8,32 +8,42 @@ T_co = typing.TypeVar("T_co", covariant=True)
 
 
 class Selector(AbstractProvider[T_co]):
-    __slots__ = "_selector", "_providers", "_resolved_provider"
+    __slots__ = "_selector", "_providers", "_override"
 
     def __init__(self, selector: typing.Callable[[], str], **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
         self._selector: typing.Final = selector
         self._providers: typing.Final = providers
-        self._resolved_provider: T_co | None = None
+        self._override = None
 
     async def async_resolve(self) -> T_co:
+        if self._override is not None:
+            return typing.cast(T_co, self._override)
+
         selected_key: typing.Final = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
-        self._resolved_provider = await self._providers[selected_key].async_resolve()
-        return self._resolved_provider
+        return await self._providers[selected_key].async_resolve()
 
     def sync_resolve(self) -> T_co:
+        if self._override is not None:
+            return typing.cast(T_co, self._override)
+
         selected_key: typing.Final = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
-        self._resolved_provider = self._providers[selected_key].sync_resolve()
-        return self._resolved_provider
+        return self._providers[selected_key].sync_resolve()
 
     def __getattr__(self, attr_name: str) -> typing.Any:
-        if self._resolved_provider is not None:
-            return getattr(self._resolved_provider, attr_name)
+        if self._override is not None:
+            return getattr(self._override, attr_name)
+
+        selected_key: typing.Final = self._selector()
+        if selected_key in self._providers:
+            provider = self._providers[selected_key]
+            return getattr(provider, attr_name)
+
         msg = f"'{type(self)}' object has no attribute '{attr_name}'"
         raise AttributeError(msg)
