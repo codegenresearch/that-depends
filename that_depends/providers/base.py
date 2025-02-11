@@ -69,19 +69,21 @@ class ResourceContext(typing.Generic[T_co]):
     ) -> None:
         self.instance = instance
         self.resolving_lock: typing.Final = asyncio.Lock()
-        self.context_stack = context_stack
+        self.context_stack = context_stack or None
         self.is_async = is_async
         if not self.is_async and self.is_context_stack_async(self.context_stack):
             msg = "Cannot use async resource in sync mode."
             raise RuntimeError(msg)
 
+    @staticmethod
     def is_context_stack_sync(
-        self, stack: contextlib.AsyncExitStack | contextlib.ExitStack | None
+        stack: contextlib.AsyncExitStack | contextlib.ExitStack | None
     ) -> typing.TypeGuard[contextlib.ExitStack]:
         return isinstance(stack, contextlib.ExitStack)
 
+    @staticmethod
     def is_context_stack_async(
-        self, stack: contextlib.AsyncExitStack | contextlib.ExitStack | None
+        stack: contextlib.AsyncExitStack | contextlib.ExitStack | None
     ) -> typing.TypeGuard[contextlib.AsyncExitStack]:
         return isinstance(stack, contextlib.AsyncExitStack)
 
@@ -147,7 +149,7 @@ class AbstractResource(AbstractProvider[T], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async():
-            msg = "AsyncResource cannot be resolved in a sync context."
+            msg = "AsyncResource cannot be resolved in an sync context."
             raise RuntimeError(msg)
 
         # lock to prevent race condition while resolving
