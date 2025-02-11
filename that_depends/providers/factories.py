@@ -17,7 +17,7 @@ class Factory(AbstractFactory[T_co]):
         self._kwargs: typing.Final = kwargs
 
     async def async_resolve(self) -> T_co:
-        if self._override is not None:
+        if self._override:
             return typing.cast(T_co, self._override)
 
         return self._factory(
@@ -32,7 +32,7 @@ class Factory(AbstractFactory[T_co]):
         )
 
     def sync_resolve(self) -> T_co:
-        if self._override is not None:
+        if self._override:
             return typing.cast(T_co, self._override)
 
         return self._factory(
@@ -57,7 +57,7 @@ class AsyncFactory(AbstractFactory[T_co]):
         self._kwargs: typing.Final = kwargs
 
     async def async_resolve(self) -> T_co:
-        if self._override is not None:
+        if self._override:
             return typing.cast(T_co, self._override)
 
         return await self._factory(
