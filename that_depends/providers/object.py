@@ -4,6 +4,7 @@ from that_depends.providers.base import AbstractProvider
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
+P = typing.ParamSpec("P")
 
 
 class Object(AbstractProvider[T_co]):
