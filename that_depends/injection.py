@@ -63,6 +63,8 @@ def _inject_to_sync(
                     raise RuntimeError(f"AsyncResource cannot be resolved synchronously. {field_name=}")
                 kwargs[field_name] = field_value.default.sync_resolve()
                 injected = True
+            elif field_name in kwargs:
+                raise RuntimeError(f"Injected arguments must not be redefined, {field_name=}")
 
         if not injected:
             warnings.warn(
