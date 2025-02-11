@@ -1,19 +1,38 @@
 import abc
 import asyncio
+import inspect
 import typing
 from contextlib import contextmanager, AsyncExitStack, ExitStack
-
+from typing import Final, TypeGuard, Iterator, AsyncIterator, Callable, Any, Coroutine
 
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
 
 
+class AttrGetter:
+    def __init__(self, obj: Any, attr_path: str):
+        self.obj = obj
+        self.attr_path = attr_path
+
+    def __call__(self) -> Any:
+        return self._get_value_from_object_by_dotted_path(self.obj, self.attr_path)
+
+    @staticmethod
+    def _get_value_from_object_by_dotted_path(obj: Any, attr_path: str) -> Any:
+        attrs = attr_path.split('.')
+        for attr in attrs:
+            obj = getattr(obj, attr)
+        return obj
+
+
 class AbstractProvider(typing.Generic[T_co], abc.ABC):
     """Abstract Provider Class."""
 
+    __slots__ = "_override"
+
     def __init__(self) -> None:
         super().__init__()
-        self._override = None
+        self._override: Any = None
 
     @abc.abstractmethod
     async def async_resolve(self) -> T_co:
@@ -30,7 +49,7 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
         self._override = mock
 
     @contextmanager
-    def override_context(self, mock: object) -> typing.Iterator[None]:
+    def override_context(self, mock: object) -> Iterator[None]:
         self.override(mock)
         try:
             yield
@@ -58,6 +77,11 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
         """
         return typing.cast(T_co, self)
 
+    def __getattr__(self, item: str) -> Any:
+        if self._override is not None:
+            return getattr(self._override, item)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
+
 
 class ResourceContext(typing.Generic[T_co]):
     __slots__ = "context_stack", "instance", "resolving_lock", "is_async"
@@ -69,21 +93,21 @@ class ResourceContext(typing.Generic[T_co]):
         For example within a ``async with container_context(): ...`` statement.
         :type is_async: bool
         """
-        self.instance = None
-        self.resolving_lock = asyncio.Lock()
-        self.context_stack = None
-        self.is_async = is_async
+        self.instance: T_co | None = None
+        self.resolving_lock: Final[asyncio.Lock] = asyncio.Lock()
+        self.context_stack: AsyncExitStack | ExitStack | None = None
+        self.is_async: Final[bool] = is_async
 
     @staticmethod
     def is_context_stack_async(
         context_stack: AsyncExitStack | ExitStack | None,
-    ) -> typing.TypeGuard[AsyncExitStack]:
+    ) -> TypeGuard[AsyncExitStack]:
         return isinstance(context_stack, AsyncExitStack)
 
     @staticmethod
     def is_context_stack_sync(
         context_stack: AsyncExitStack | ExitStack,
-    ) -> typing.TypeGuard[ExitStack]:
+    ) -> TypeGuard[ExitStack]:
         return isinstance(context_stack, ExitStack)
 
     async def tear_down(self) -> None:
@@ -111,38 +135,36 @@ class ResourceContext(typing.Generic[T_co]):
             self.context_stack = None
             self.instance = None
         elif self.is_context_stack_async(self.context_stack):
-            msg = "Cannot tear down async context in sync mode"
-            raise RuntimeError(msg)
+            raise RuntimeError("Cannot tear down async context in sync mode")
 
 
 class AbstractResource(AbstractProvider[T_co], abc.ABC):
     def __init__(
         self,
-        creator: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]],
+        creator: Callable[P, Iterator[T_co] | AsyncIterator[T_co]],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
         super().__init__()
         if inspect.isasyncgenfunction(creator):
-            self._is_async = True
+            self._is_async: Final[bool] = True
         elif inspect.isgeneratorfunction(creator):
-            self._is_async = False
+            self._is_async: Final[bool] = False
         else:
-            msg = f"{type(self).__name__} must be generator function"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"{type(self).__name__} must be a generator function")
 
-        self._creator = creator
-        self._args = args
-        self._kwargs = kwargs
+        self._creator: Final[Callable[P, Iterator[T_co] | AsyncIterator[T_co]]] = creator
+        self._args: Final[tuple] = args
+        self._kwargs: Final[dict] = kwargs
 
     def _is_creator_async(
-        self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.AsyncIterator[T_co]]]:
+        self, _: Callable[P, Iterator[T_co] | AsyncIterator[T_co]]
+    ) -> TypeGuard[Callable[P, AsyncIterator[T_co]]]:
         return self._is_async
 
     def _is_creator_sync(
-        self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.Iterator[T_co]]]:
+        self, _: Callable[P, Iterator[T_co] | AsyncIterator[T_co]]
+    ) -> TypeGuard[Callable[P, Iterator[T_co]]]:
         return not self._is_async
 
     @abc.abstractmethod
@@ -158,8 +180,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved in an sync context."
-            raise RuntimeError(msg)
+            raise RuntimeError("AsyncResource cannot be resolved in a sync context.")
 
         # lock to prevent race condition while resolving
         async with context.resolving_lock:
@@ -200,8 +221,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved synchronously"
-            raise RuntimeError(msg)
+            raise RuntimeError("AsyncResource cannot be resolved synchronously")
 
         if self._is_creator_sync(self._creator):
             context.context_stack = ExitStack()
@@ -218,9 +238,9 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
     """Abstract Factory Class."""
 
     @property
-    def provider(self) -> typing.Callable[[], typing.Coroutine[typing.Any, typing.Any, T_co]]:
+    def provider(self) -> Callable[[], Coroutine[Any, Any, T_co]]:
         return self.async_resolve
 
     @property
-    def sync_provider(self) -> typing.Callable[[], T_co]:
+    def sync_provider(self) -> Callable[[], T_co]:
         return self.sync_resolve
