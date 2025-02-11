@@ -34,6 +34,3 @@ __all__ = [
     "fetch_context_item",
     "sync_container_context",
 ]
-
-
-It seems the previous snippet already matched the gold code in terms of the order and items in the `__all__` list. If there are any specific items or order that need to be adjusted, please provide more details. Otherwise, this should be the correct version.
