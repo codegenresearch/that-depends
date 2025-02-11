@@ -1,4 +1,4 @@
-from that_depends.providers import AbstractProvider, AttrGetter
+from that_depends.providers.base import AbstractProvider, AttrGetter
 from that_depends.providers.collections import Dict, List
 from that_depends.providers.context_resources import (
     AsyncContextResource,
@@ -15,10 +15,10 @@ from that_depends.providers.singleton import Singleton
 
 __all__ = [
     "AbstractProvider",
-    "AttrGetter",
     "AsyncContextResource",
     "AsyncFactory",
     "AsyncResource",
+    "AttrGetter",
     "ContextResource",
     "DIContextMiddleware",
     "Dict",
