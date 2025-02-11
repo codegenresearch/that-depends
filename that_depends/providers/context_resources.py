@@ -32,7 +32,7 @@ class container_context(  # noqa: N801
     """Manage the context of ContextResources.
 
     Can be entered using ``async with container_context()`` or with ``with container_context()``
-    as a async-context-manager or context-manager respectively.
+    as an async-context-manager or context-manager respectively.
     When used as an async-context-manager, it will allow setup & teardown of both sync and async resources.
     When used as an sync-context-manager, it will only allow setup & teardown of sync resources.
     """
@@ -57,8 +57,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            msg = "Context is not set, call ``__enter__`` first"
-            raise RuntimeError(msg)
+            raise RuntimeError("Context is not set, call ``__enter__`` first")
         try:
             self._tear_down_context()
         finally:
@@ -68,8 +67,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            msg = "Context is not set, call ``__aenter__`` first"
-            raise RuntimeError(msg)
+            raise RuntimeError("Context is not set, call ``__aenter__`` first")
         try:
             await self._tear_down_context_async()
         finally:
@@ -92,16 +90,16 @@ class container_context(  # noqa: N801
         if inspect.iscoroutinefunction(func):
 
             @wraps(func)
-            async def _async_inner(*args: P.args, **kwds: P.kwargs) -> T:
+            async def _async_inner(*args: P.args, **kwargs: P.kwargs) -> T:
                 async with self:
-                    return await func(*args, **kwds)  # type: ignore[no-any-return]
+                    return await func(*args, **kwargs)  # type: ignore[no-any-return]
 
             return typing.cast(typing.Callable[P, T], _async_inner)
 
         @wraps(func)
-        def _sync_inner(*args: P.args, **kwds: P.kwargs) -> T:
+        def _sync_inner(*args: P.args, **kwargs: P.kwargs) -> T:
             with self:
-                return func(*args, **kwds)
+                return func(*args, **kwargs)
 
         return _sync_inner
 
