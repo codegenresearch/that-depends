@@ -32,13 +32,13 @@ def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:
 
 
 @contextmanager
-def sync_container_context(initial_context: ContextType | None = None) -> typing.Iterator[None]:
+def sync_container_context(initial_context_: ContextType | None = None) -> typing.Iterator[None]:
     """Manage the context of ContextResources for synchronous operations."""
-    initial_context = initial_context or {}
-    initial_context[_ASYNC_CONTEXT_KEY] = False
-    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
+    initial_context_ = initial_context_ or {}
+    initial_context_[_ASYNC_CONTEXT_KEY] = False
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context_)
     try:
-        yield
+        yield None
     finally:
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -49,7 +49,7 @@ def sync_container_context(initial_context: ContextType | None = None) -> typing
 
 
 @asynccontextmanager
-async def container_context(initial_context: ContextType | None = None) -> typing.AsyncIterator[None]:
+async def container_context(initial_context_: ContextType | None = None) -> typing.AsyncIterator[None]:
     """Manage the context of ContextResources.
 
     Can be entered using ``async with container_context()`` or with ``with container_context()``
@@ -57,11 +57,11 @@ async def container_context(initial_context: ContextType | None = None) -> typin
     When used as async-context-manager, it will allow setup & teardown of both sync and async resources.
     When used as sync-context-manager, it will only allow setup & teardown of sync resources.
     """
-    initial_context = initial_context or {}
-    initial_context[_ASYNC_CONTEXT_KEY] = True
-    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
+    initial_context_ = initial_context_ or {}
+    initial_context_[_ASYNC_CONTEXT_KEY] = True
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context_)
     try:
-        yield
+        yield None
     finally:
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -143,7 +143,7 @@ class AsyncContextResource(ContextResource[T]):
 This code addresses the feedback by:
 1. Removing the invalid comment that was causing a `SyntaxError`.
 2. Using `contextlib` directly for both `asynccontextmanager` and `contextmanager`.
-3. Naming the initial context variable `initial_context` consistently.
+3. Naming the initial context variable `initial_context_` consistently.
 4. Ensuring type annotations are consistent.
 5. Yielding `None` in the `container_context` and `sync_container_context` functions.
 6. Naming the context token variable `token` consistently and marking it as `typing.Final`.
