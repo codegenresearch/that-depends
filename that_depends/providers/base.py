@@ -66,9 +66,9 @@ class ResourceContext(typing.Generic[T_co]):
         is_async: bool,
         instance: T_co | None = None,
     ) -> None:
-        self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
         self.instance = instance
         self.resolving_lock: typing.Final = asyncio.Lock()
+        self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
         self.is_async = is_async
 
     @staticmethod
