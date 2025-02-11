@@ -2,22 +2,21 @@ import typing
 
 from that_depends.providers.base import AbstractFactory, AbstractProvider
 
-
-T_co = typing.TypeVar("T_co", covariant=True)
+T_co = typing.TypeVar("T_co")
 P = typing.ParamSpec("P")
 
 
 class Factory(AbstractFactory[T_co]):
     __slots__ = "_factory", "_args", "_kwargs", "_override"
 
-    def __init__(self, factory: type[T_co] | typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
+    def __init__(self, factory, *args, **kwargs):
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._factory = factory
+        self._args = args
+        self._kwargs = kwargs
         self._override = None
 
-    async def async_resolve(self) -> T_co:
+    async def async_resolve(self):
         if self._override:
             return typing.cast(T_co, self._override)
 
@@ -26,7 +25,7 @@ class Factory(AbstractFactory[T_co]):
             **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
         )
 
-    def sync_resolve(self) -> T_co:
+    def sync_resolve(self):
         if self._override:
             return typing.cast(T_co, self._override)
 
@@ -39,13 +38,13 @@ class Factory(AbstractFactory[T_co]):
 class AsyncFactory(AbstractFactory[T_co]):
     __slots__ = "_factory", "_args", "_kwargs", "_override"
 
-    def __init__(self, factory: typing.Callable[P, typing.Awaitable[T_co]], *args: P.args, **kwargs: P.kwargs) -> None:
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+    def __init__(self, factory, *args, **kwargs):
+        self._factory = factory
+        self._args = args
+        self._kwargs = kwargs
         self._override = None
 
-    async def async_resolve(self) -> T_co:
+    async def async_resolve(self):
         if self._override:
             return typing.cast(T_co, self._override)
 
@@ -54,6 +53,6 @@ class AsyncFactory(AbstractFactory[T_co]):
             **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
         )
 
-    def sync_resolve(self) -> typing.NoReturn:
+    def sync_resolve(self):
         msg = "AsyncFactory cannot be resolved synchronously"
         raise RuntimeError(msg)
