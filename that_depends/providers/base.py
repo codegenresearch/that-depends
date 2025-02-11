@@ -8,6 +8,7 @@ from operator import attrgetter
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
+R = typing.TypeVar("R")
 P = typing.ParamSpec("P")
 
 
@@ -20,7 +21,7 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         if attr_name.startswith("_"):
-            msg = f"'{type(self).__name__}' object has no attribute '{attr_name}'"
+            msg = f"'{type(self)}' object has no attribute '{attr_name}'"
             raise AttributeError(msg)
         return AttrGetter(provider=self, attr_name=attr_name)
 
@@ -79,7 +80,7 @@ class ResourceContext(typing.Generic[T_co]):
         :type is_async: bool
         """
         self.instance: T_co | None = None
-        self.resolving_lock: asyncio.Lock = asyncio.Lock()
+        self.resolving_lock: typing.Final = asyncio.Lock()
         self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
         self.is_async: bool = is_async
 
@@ -133,9 +134,9 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
     ) -> None:
         super().__init__()
         if inspect.isasyncgenfunction(creator):
-            self._is_async: bool = True
+            self._is_async = True
         elif inspect.isgeneratorfunction(creator):
-            self._is_async: bool = False
+            self._is_async = False
         else:
             msg = f"{type(self).__name__} must be generator function"
             raise RuntimeError(msg)
@@ -262,7 +263,7 @@ class AttrGetter(AbstractProvider[T_co]):
 
     def __getattr__(self, attr: str) -> "AttrGetter[T_co]":
         if attr.startswith("_"):
-            msg = f"'{type(self).__name__}' object has no attribute '{attr}'"
+            msg = f"'{type(self)}' object has no attribute '{attr}'"
             raise AttributeError(msg)
         self._attrs.append(attr)
         return self
