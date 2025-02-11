@@ -8,13 +8,8 @@ class List(AbstractProvider[list[T_co]]):
     __slots__ = ("_providers",)
 
     def __init__(self, *providers: AbstractProvider[T_co]) -> None:
-        """
-        Initialize the List provider with multiple providers.
-
-        :param providers: Variable length provider list.
-        """
         super().__init__()
-        self._providers: typing.Final = providers
+        self._providers: Final = providers
 
     async def async_resolve(self) -> list[T_co]:
         return [await x.async_resolve() for x in self._providers]
@@ -32,13 +27,8 @@ class Dict(AbstractProvider[dict[str, T_co]]):
     __slots__ = ("_providers",)
 
     def __init__(self, **providers: AbstractProvider[T_co]) -> None:
-        """
-        Initialize the Dict provider with keyword providers.
-
-        :param providers: Keyword arguments where keys are strings and values are providers.
-        """
         super().__init__()
-        self._providers: typing.Final = providers
+        self._providers: Final = providers
 
     async def async_resolve(self) -> dict[str, T_co]:
         return {key: await provider.async_resolve() for key, provider in self._providers.items()}
