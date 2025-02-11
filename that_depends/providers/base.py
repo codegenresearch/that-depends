@@ -91,9 +91,9 @@ class ResourceContext(typing.Generic[T_co]):
         if self.context_stack is None:
             return
 
-        if isinstance(self.context_stack, contextlib.AsyncExitStack):
+        if self.is_context_stack_async(self.context_stack):
             await self.context_stack.aclose()
-        else:
+        elif self.is_context_stack_sync(self.context_stack):
             self.context_stack.close()
         self.context_stack = None
         self.instance = None
@@ -101,6 +101,7 @@ class ResourceContext(typing.Generic[T_co]):
     def sync_tear_down(self) -> None:
         if self.context_stack is None:
             return
+
         if self.is_context_stack_sync(self.context_stack):
             self.context_stack.close()
             self.context_stack = None
@@ -153,7 +154,7 @@ class AbstractResource(AbstractProvider[T], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved in an sync context."
+            msg = "AsyncResource cannot be resolved in a sync context."
             raise RuntimeError(msg)
 
         # lock to prevent race condition while resolving
