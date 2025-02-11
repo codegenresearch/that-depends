@@ -16,6 +16,13 @@ from that_depends.providers.selector import Selector
 from that_depends.providers.singleton import Singleton
 
 __all__ = [
+    "container_context",
+    "sync_container_context",
+    "fetch_context_item",
+    "providers",
+    "BaseContainer",
+    "inject",
+    "Provide",
     "AbstractProvider",
     "AsyncContextResource",
     "AsyncFactory",
@@ -30,7 +37,4 @@ __all__ = [
     "Resource",
     "Selector",
     "Singleton",
-    "container_context",
-    "fetch_context_item",
-    "sync_container_context",
 ]
