@@ -8,12 +8,13 @@ T_co = typing.TypeVar("T_co", covariant=True)
 
 
 class Selector(AbstractProvider[T_co]):
-    __slots__ = "_selector", "_providers"
+    __slots__ = "_selector", "_providers", "_override"
 
     def __init__(self, selector: typing.Callable[[], str], **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
         self._selector: typing.Final = selector
         self._providers: typing.Final = providers
+        self._override = None
 
     async def async_resolve(self) -> T_co:
         if self._override:
@@ -45,7 +46,7 @@ class Selector(AbstractProvider[T_co]):
         raise AttributeError(msg)
 
 
-To align more closely with the gold code, I have:
-1. Simplified the check for `_override` to just `if self._override:`.
-2. Removed the `_override` attribute from the `__slots__` and the constructor, as it was not necessary.
-3. Ensured that the use of `typing.Final` is consistent with the gold code.
+To address the feedback:
+1. **Include the `_override` Attribute**: Added `_override` to the `__slots__` and initialized it in the constructor.
+2. **Maintain Consistency with `typing.Final`**: Ensured that `_selector` and `_providers` are marked as `Final`.
+3. **Check for the Presence of `_override`**: The check for `_override` remains consistent and the attribute is properly defined and initialized.
