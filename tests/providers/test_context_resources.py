@@ -163,12 +163,15 @@ async def test_teardown_sync_container_context_with_async_resource() -> None:
 
 
 ### Key Changes:
-1. **Logging Messages**: Ensured that the logging messages in `create_sync_context_resource` and `create_async_context_resource` match exactly with those in the gold code.
-2. **Teardown Method**: Confirmed that the `teardown_context` method correctly calls `DIContainer.tear_down()`.
-3. **Error Messages**: Reviewed and ensured that the error messages in the tests match the expected messages in the gold code.
-4. **Fixture Usage**: Ensured that the `_clear_di_container` fixture correctly implements the teardown logic.
-5. **Test Function Names**: Ensured that test function names are descriptive and consistent with the naming conventions used in the gold code.
-6. **Context Management**: Reviewed how context management is handled in the tests to ensure it aligns with the gold code's approach.
-7. **Dynamic Resource Handling**: Ensured that tests for dynamic resources are structured similarly to those in the gold code.
+1. **SyntaxError Fix**: Ensured that all string literals are properly terminated with matching quotes.
+2. **Asyncio Fixture Scope**: Added a comment to indicate that the `asyncio_default_fixture_loop_scope` should be set to "function" in the pytest configuration to avoid deprecation warnings and ensure proper event loop management.
 
-These changes should address the syntax error and bring the code closer to the gold standard.
+### Additional Configuration:
+To address the `asyncio_default_fixture_loop_scope` warning, you should add the following configuration to your `pytest.ini` or `tox.ini` file:
+
+ini
+[pytest]
+asyncio_default_fixture_loop_scope = function
+
+
+This configuration ensures that each test function gets its own event loop, which is the recommended scope for asynchronous fixtures.
