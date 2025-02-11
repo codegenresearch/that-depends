@@ -63,4 +63,4 @@ class Singleton(AbstractProvider[T_co]):
             self._instance = None
 
 
-I have removed any extraneous lines and ensured that the `# type: ignore[arg-type]` comments are placed directly next to the expressions they are meant to ignore. The list and dictionary comprehensions are formatted with the `*` and `**` unpacking syntax on the same line as the opening bracket. The comment regarding the lock is formatted consistently.
+I have removed any extraneous comments and ensured that the `# type: ignore[arg-type]` comments are placed directly next to the expressions they are meant to ignore. The list and dictionary comprehensions are formatted with the `*` and `**` unpacking syntax on the same line as the opening bracket. The comment regarding the lock is formatted consistently.
