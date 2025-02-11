@@ -165,7 +165,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async(self._creator):
-            raise RuntimeError("AsyncResource cannot be resolved in an sync context.")
+            raise RuntimeError("AsyncResource cannot be resolved in a sync context.")
 
         # lock to prevent race condition while resolving
         async with context.resolving_lock:
