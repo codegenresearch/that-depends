@@ -15,7 +15,6 @@ from that_depends.providers.resources import AsyncResource, Resource
 from that_depends.providers.selector import Selector
 from that_depends.providers.singleton import Singleton
 
-
 __all__ = [
     "AbstractProvider",
     "AsyncContextResource",
@@ -35,7 +34,3 @@ __all__ = [
     "fetch_context_item",
     "sync_container_context",
 ]
-
-import warnings
-
-warnings.warn("The use of deprecated components is discouraged. Please migrate to the new async context managers.", DeprecationWarning)
