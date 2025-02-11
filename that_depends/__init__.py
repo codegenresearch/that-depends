@@ -6,10 +6,10 @@ from that_depends.providers.context_resources import fetch_context_item
 
 __all__ = [
     "container_context",
+    "sync_container_context",
     "fetch_context_item",
     "providers",
     "BaseContainer",
     "inject",
     "Provide",
-    "sync_container_context",
 ]
