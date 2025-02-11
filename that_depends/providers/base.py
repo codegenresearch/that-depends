@@ -81,16 +81,12 @@ class ResourceContext(typing.Generic[T_co]):
         self.is_async = is_async
 
     @staticmethod
-    def is_context_stack_async(
-        context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None,
-    ) -> typing.TypeGuard[contextlib.AsyncExitStack]:
+    def is_context_stack_async(context_stack):
         """Check if the context stack is an instance of AsyncExitStack."""
         return isinstance(context_stack, contextlib.AsyncExitStack)
 
     @staticmethod
-    def is_context_stack_sync(
-        context_stack: contextlib.AsyncExitStack | contextlib.ExitStack,
-    ) -> typing.TypeGuard[contextlib.ExitStack]:
+    def is_context_stack_sync(context_stack):
         """Check if the context stack is an instance of ExitStack."""
         return isinstance(context_stack, contextlib.ExitStack)
 
@@ -180,7 +176,10 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                         T_co,
                         await context.context_stack.enter_async_context(
                             contextlib.asynccontextmanager(self._creator)(
-                                *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+                                *[
+                                    await x.async_resolve() if isinstance(x, AbstractProvider) else x
+                                    for x in self._args
+                                ],
                                 **{
                                     k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                     for k, v in self._kwargs.items()
@@ -192,8 +191,14 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                     context.context_stack = contextlib.ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
-                            *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-                            **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
+                            *[
+                                x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                                for x in self._args
+                            ],
+                            **{
+                                k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                                for k, v in self._kwargs.items()
+                            },
                         ),
                     )
             return typing.cast(T_co, context.instance)
@@ -214,8 +219,14 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             context.context_stack = contextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
-                    *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-                    **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
+                    *[
+                        x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                        for x in self._args
+                    ],
+                    **{
+                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                        for k, v in self._kwargs.items()
+                    },
                 ),
             )
         return typing.cast(T_co, context.instance)
