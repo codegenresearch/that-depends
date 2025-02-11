@@ -247,11 +247,11 @@ class AttrGetter(AbstractProvider[T_co]):
 
     async def async_resolve(self) -> T_co:
         resolved = await self._provider.async_resolve()
-        return attrgetter(self._attr_name)(resolved)
+        return _get_value_from_object_by_dotted_path(resolved, self._attr_name)
 
     def sync_resolve(self) -> T_co:
         resolved = self._provider.sync_resolve()
-        return attrgetter(self._attr_name)(resolved)
+        return _get_value_from_object_by_dotted_path(resolved, self._attr_name)
 
 
 def _get_value_from_object_by_dotted_path(obj: object, dotted_path: str) -> typing.Any:
@@ -269,5 +269,5 @@ This code addresses the feedback by:
 3. Ensuring consistent error messages and type annotations.
 4. Implementing the helper function `_get_value_from_object_by_dotted_path` correctly.
 5. Ensuring the `AttrGetter` class has the correct `__slots__` and handles dynamic attribute access properly.
-6. Ensuring consistent handling of async and sync contexts.
-7. Ensuring clear and consistent documentation.
+6. Ensuring clear and consistent documentation.
+7. Ensuring consistent handling of async and sync contexts.
