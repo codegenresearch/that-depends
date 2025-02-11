@@ -138,7 +138,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         elif inspect.isgeneratorfunction(creator):
             self._is_async = False
         else:
-            msg = f"{type(self).__name__} must be generator function"
+            msg = f"{type(self).__name__} must be a generator function"
             raise RuntimeError(msg)
 
         self._creator: typing.Final[typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]] = creator
@@ -168,7 +168,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved in a sync context."
+            msg = "AsyncResource cannot be resolved in an sync context."
             raise RuntimeError(msg)
 
         # lock to prevent race condition while resolving
