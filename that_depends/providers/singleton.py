@@ -13,11 +13,11 @@ class Singleton(AbstractProvider[T_co]):
 
     def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory = typing.Final(factory)
-        self._args = typing.Final(args)
-        self._kwargs = typing.Final(kwargs)
-        self._instance = None
-        self._resolving_lock = typing.Final(asyncio.Lock())
+        self._factory: typing.Final = factory
+        self._args: typing.Final = args
+        self._kwargs: typing.Final = kwargs
+        self._instance: T_co | None = None
+        self._resolving_lock: typing.Final = asyncio.Lock()
 
     async def async_resolve(self) -> T_co:
         if self._override is not None:
