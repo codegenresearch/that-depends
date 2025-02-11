@@ -77,17 +77,17 @@ class BaseContainer:
             v.reset_override()
 
     @classmethod
-    def resolver(cls, item: typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
+    def resolver(cls, item: type[T] | typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
         async def _inner() -> T:
             return await cls.resolve(item)
 
         return _inner
 
     @classmethod
-    async def resolve(cls, object_to_resolve: typing.Callable[..., T]) -> T:
-        signature: typing.Final = inspect.signature(object_to_resolve)
-        kwargs = {}
-        providers: typing.Final = cls.get_providers()
+    async def resolve(cls, object_to_resolve: type[T] | typing.Callable[..., T]) -> T:
+        signature: typing.Final[inspect.Signature] = inspect.signature(object_to_resolve)
+        kwargs: dict[str, typing.Any] = {}
+        providers: typing.Final[dict[str, AbstractProvider[typing.Any]]] = cls.get_providers()
         for field_name, field_value in signature.parameters.items():
             if field_value.default is not inspect.Parameter.empty or field_name in ("_", "__"):
                 continue
@@ -96,16 +96,20 @@ class BaseContainer:
                 msg = f"Provider is not found, {field_name=}"
                 raise RuntimeError(msg)
 
-            kwargs[field_name] = await providers[field_name].async_resolve()
+            provider = providers[field_name]
+            if provider._override is not None:
+                kwargs[field_name] = provider._override
+            else:
+                kwargs[field_name] = await provider.async_resolve()
 
         return object_to_resolve(**kwargs)
 
     @classmethod
     @contextmanager
     def override_providers(cls, providers_for_overriding: dict[str, typing.Any]) -> typing.Iterator[None]:
-        current_providers: typing.Final = cls.get_providers()
-        current_provider_names: typing.Final = set(current_providers.keys())
-        given_provider_names: typing.Final = set(providers_for_overriding.keys())
+        current_providers: typing.Final[dict[str, AbstractProvider[typing.Any]]] = cls.get_providers()
+        current_provider_names: typing.Final[set[str]] = set(current_providers.keys())
+        given_provider_names: typing.Final[set[str]] = set(providers_for_overriding.keys())
 
         for given_name in given_provider_names:
             if given_name not in current_provider_names:
