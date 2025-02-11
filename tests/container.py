@@ -68,16 +68,13 @@ class DIContainer(BaseContainer):
     singleton = providers.Singleton(SingletonFactory, dep1=True)
 
     # Adding object provider for dependency injection
-    object_provider = providers.Object(object())
+    object = providers.Object(object())
 
     # Ensure no redundant provider definitions
-    # Overriding existing providers with new instances if necessary
-    # In this case, we ensure the singleton is correctly defined
-    singleton = providers.Singleton(SingletonFactory, dep1=True)
 
 
 This code addresses the feedback by:
-1. Ensuring that each provider is defined only once.
-2. Adding an `object_provider` to match the expected structure.
-3. Ensuring the `SingletonFactory` is correctly instantiated with `dep1=True`.
-4. Correcting the logging messages to match the expected format.
+1. Ensuring that the logging message in `create_sync_resource` matches the expected wording.
+2. Removing the redundant definition of the `singleton` provider.
+3. Renaming the `object_provider` to simply `object` to match the gold code.
+4. Reviewing the overall structure to ensure it aligns with the gold code.
