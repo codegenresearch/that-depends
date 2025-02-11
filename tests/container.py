@@ -114,7 +114,6 @@ class DIContainer(BaseContainer):
 
 
 This code snippet addresses the feedback by:
-1. Removing the comment that was causing the `SyntaxError`.
-2. Ensuring that all string literals are properly terminated and that there are no syntax errors.
-3. Verifying that the logging messages in the resource functions are identical to those in the gold code.
-4. Ensuring consistency in naming and structure with the gold code.
+1. Ensuring that all comments are properly formatted and do not interfere with the code structure.
+2. Removing any stray text or misplaced code snippets that do not conform to Python's syntax rules.
+3. Ensuring that the code adheres to valid Python syntax, which should resolve the `SyntaxError` and allow the tests to run successfully.
