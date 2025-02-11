@@ -47,7 +47,7 @@ def _inject_to_async(
 def _inject_to_sync(
     func: typing.Callable[P, T],
 ) -> typing.Callable[P, T]:
-    signature = inspect.signature(func)
+    signature: typing.Final = inspect.signature(func)
 
     @functools.wraps(func)
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -58,6 +58,8 @@ def _inject_to_sync(
                 raise RuntimeError(msg)
 
             if isinstance(field_value.default, AbstractProvider):
+                if inspect.iscoroutinefunction(field_value.default.async_resolve):
+                    raise RuntimeError(f"AsyncResource cannot be resolved synchronously. {field_name=}")
                 kwargs[field_name] = field_value.default.sync_resolve()
                 injected = True
 
@@ -73,7 +75,7 @@ def _inject_to_sync(
 
 class ClassGetItemMeta(type):
     def __getitem__(cls, provider: AbstractProvider[T]) -> T:
-        return provider.sync_resolve()
+        return typing.cast(T, provider.sync_resolve())
 
 
 class Provide(metaclass=ClassGetItemMeta):
