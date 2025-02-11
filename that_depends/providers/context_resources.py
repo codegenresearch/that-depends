@@ -10,7 +10,7 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-logger = logging.getLogger(__name__)
+logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
 _CONTAINER_CONTEXT: typing.Final = ContextVar("CONTAINER_CONTEXT")
@@ -52,7 +52,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            raise RuntimeError("Context not set; call `__enter__` first")
+            raise RuntimeError("Context is not set, call `__enter__` first")
 
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -66,7 +66,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            raise RuntimeError("Context not set; call `__aenter__` first")
+            raise RuntimeError("Context is not set, call `__aenter__` first")
 
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -99,11 +99,11 @@ class container_context(  # noqa: N801
 
 
 class DIContextMiddleware:
-    def __init__(self, app) -> None:
-        self.app = app
+    def __init__(self, app: typing.Callable) -> None:
+        self.app: typing.Final[typing.Callable] = app
 
     @container_context()
-    async def __call__(self, scope, receive, send):
+    async def __call__(self, scope: dict, receive: typing.Callable, send: typing.Callable) -> None:
         return await self.app(scope, receive, send)
 
 
@@ -111,7 +111,7 @@ def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
-        raise RuntimeError("Context not set; use `container_context`") from exc
+        raise RuntimeError("Context is not set; use `container_context`") from exc
 
 
 def _is_container_context_async() -> bool:
@@ -144,7 +144,7 @@ class ContextResource(AbstractResource[T_co]):
         **kwargs: P.kwargs,
     ) -> None:
         super().__init__(creator, *args, **kwargs)
-        self._internal_name = f"{creator.__name__}-{uuid.uuid4()}"
+        self._internal_name: typing.Final[str] = f"{creator.__name__}-{uuid.uuid4()}"
 
     def _fetch_context(self) -> ResourceContext[T_co]:
         container_context = _get_container_context()
