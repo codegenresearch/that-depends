@@ -138,7 +138,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         elif inspect.isgeneratorfunction(creator):
             self._is_async = False
         else:
-            msg = f"{type(self).__name__} must be a generator function"
+            msg = f"{type(self).__name__} must be generator function"
             raise RuntimeError(msg)
 
         self._creator: typing.Final[typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]] = creator
