@@ -293,3 +293,4 @@ class AttrGetter(
 - Ensured that the logic within methods matches the gold code closely.
 - Reviewed docstrings for consistency in style and content.
 - Ensured that the naming of attributes and methods is consistent with the gold code.
+- Ensured that static method annotations in `ResourceContext` match the gold code.
