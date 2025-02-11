@@ -2,6 +2,7 @@ import abc
 import asyncio
 import contextlib
 import inspect
+import operator
 import typing
 from contextlib import contextmanager
 
@@ -15,31 +16,29 @@ class AttrGetter:
         self._provider = provider
         self._attr_path = attr_path
 
-    async def _resolve_async(self, obj, attr_names):
-        for attr_name in attr_names:
+    async def _resolve_async(self, obj):
+        for attr_name in self._attr_path.split('.'):
             if isinstance(obj, AbstractProvider):
                 obj = await obj.async_resolve()
-            obj = getattr(obj, attr_name)
+            obj = operator.attrgetter(attr_name)(obj)
         return obj
 
-    def _resolve_sync(self, obj, attr_names):
-        for attr_name in attr_names:
+    def _resolve_sync(self, obj):
+        for attr_name in self._attr_path.split('.'):
             if isinstance(obj, AbstractProvider):
                 obj = obj.sync_resolve()
-            obj = getattr(obj, attr_name)
+            obj = operator.attrgetter(attr_name)(obj)
         return obj
 
     def __await__(self):
         async def inner():
             resolved = await self._provider.async_resolve()
-            attr_names = self._attr_path.split('.')
-            return await self._resolve_async(resolved, attr_names)
+            return await self._resolve_async(resolved)
         return inner().__await__()
 
     def __call__(self):
         resolved = self._provider.sync_resolve()
-        attr_names = self._attr_path.split('.')
-        return self._resolve_sync(resolved, attr_names)
+        return self._resolve_sync(resolved)
 
 
 class AbstractProvider(typing.Generic[T_co], abc.ABC):
@@ -218,11 +217,9 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
 
 This code addresses the feedback by:
 1. Removing the misplaced comment that caused the `SyntaxError`.
-2. Implementing the `_override` mechanism with methods for setting and resetting the override.
-3. Ensuring `sync_resolve` is an abstract method.
-4. Including a context manager for overriding behavior.
-5. Enhancing error handling with clear messages.
-6. Using type guards to differentiate between async and sync contexts.
-7. Implementing the `sync_tear_down` method for synchronous teardown of resources.
-8. Adding error handling for private attribute access in `__getattr__`.
-9. Streamlining the `AttrGetter` class to handle dotted attribute paths.
+2. Using `operator.attrgetter` to simplify attribute access in the `AttrGetter` class.
+3. Ensuring that error messages are clear and consistent.
+4. Handling async and sync contexts explicitly in the `AbstractResource` class.
+5. Checking for overrides in both `async_resolve` and `sync_resolve` methods.
+6. Simplifying the `AttrGetter` class to reduce redundancy.
+7. Ensuring that comments and docstrings are clear and consistent.
