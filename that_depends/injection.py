@@ -12,7 +12,7 @@ T = typing.TypeVar("T")
 
 def inject(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
     if inspect.iscoroutinefunction(func):
-        return _inject_to_async(func)
+        return typing.cast(typing.Callable[P, T], _inject_to_async(func))
     return _inject_to_sync(func)
 
 
@@ -44,14 +44,14 @@ def _inject_to_async(
 
 
 def _inject_to_sync(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
-    signature = inspect.signature(func)
+    signature: typing.Final = inspect.signature(func)
 
     @functools.wraps(func)
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
         for field_name, field_value in signature.parameters.items():
             if field_name in kwargs:
-                raise RuntimeError(f"Injected arguments must not be redefined, {field_name=}")
+                raise RuntimeError(f"Injected argument '{field_name}' must not be redefined")
             if not isinstance(field_value.default, AbstractProvider):
                 continue
             kwargs[field_name] = field_value.default.sync_resolve()
@@ -72,7 +72,9 @@ class ClassGetItemMeta(type):
     def __getitem__(cls, provider: AbstractProvider[T]) -> T:
         if not isinstance(provider, AbstractProvider):
             raise TypeError(f"Expected an instance of AbstractProvider, got {type(provider).__name__}")
-        return provider.sync_resolve()
+        if inspect.iscoroutinefunction(provider.async_resolve):
+            raise RuntimeError("AsyncResource cannot be resolved synchronously.")
+        return typing.cast(T, provider.sync_resolve())
 
 
 class Provide(metaclass=ClassGetItemMeta):
