@@ -2,7 +2,6 @@ import typing
 
 from that_depends.providers.base import AbstractProvider
 
-
 T_co = typing.TypeVar("T_co", covariant=True)
 
 
@@ -17,9 +16,9 @@ class Selector(AbstractProvider[T_co]):
 
     async def async_resolve(self) -> T_co:
         if self._override:
-            return typing.cast(T_co, self._override)
+            return self._override
 
-        selected_key: typing.Final = self._selector()
+        selected_key = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
@@ -27,9 +26,9 @@ class Selector(AbstractProvider[T_co]):
 
     def sync_resolve(self) -> T_co:
         if self._override:
-            return typing.cast(T_co, self._override)
+            return self._override
 
-        selected_key: typing.Final = self._selector()
+        selected_key = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
