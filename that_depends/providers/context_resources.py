@@ -127,7 +127,7 @@ def _is_container_context_async() -> bool:
     return typing.cast(bool, _get_container_context().get(_ASYNC_CONTEXT_KEY, False))
 
 
-def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401
+def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:
     return _get_container_context().get(key, default)
 
 
