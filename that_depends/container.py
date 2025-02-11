@@ -108,7 +108,7 @@ class BaseContainer:
     @contextmanager
     def override_providers(cls, providers_for_overriding: dict[str, typing.Any]) -> typing.Iterator[None]:
         current_providers: typing.Final[dict[str, AbstractProvider[typing.Any]]] = cls.get_providers()
-        current_provider_names: typing.Final[set[str]] = set(current_providers.keys())
+        current_provider_names: typing.Final[set[str]] = set(current_proivers.keys())
         given_provider_names: typing.Final[set[str]] = set(providers_for_overriding.keys())
 
         for given_name in given_provider_names:
