@@ -1,5 +1,4 @@
 import typing
-import asyncio
 
 from that_depends.providers.base import AbstractFactory, AbstractProvider
 
@@ -9,30 +8,21 @@ P = typing.ParamSpec("P")
 
 
 class Factory(AbstractFactory[T_co]):
-    __slots__ = "_factory", "_args", "_kwargs", "_override", "_resolving_lock"
+    __slots__ = "_factory", "_args", "_kwargs"
 
     def __init__(self, factory: type[T_co] | typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
-        self._override = None
-        self._resolving_lock: typing.Final = asyncio.Lock()
+        self._factory = factory
+        self._args = args
+        self._kwargs = kwargs
 
     async def async_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
-
-        async with self._resolving_lock:
-            return self._factory(
-                *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-                **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
-            )
+        return self._factory(
+            *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+            **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
+        )
 
     def sync_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
-
         return self._factory(
             *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
             **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
@@ -40,25 +30,19 @@ class Factory(AbstractFactory[T_co]):
 
 
 class AsyncFactory(AbstractFactory[T_co]):
-    __slots__ = "_factory", "_args", "_kwargs", "_override", "_resolving_lock"
+    __slots__ = "_factory", "_args", "_kwargs"
 
     def __init__(self, factory: typing.Callable[P, typing.Awaitable[T_co]], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
-        self._override = None
-        self._resolving_lock: typing.Final = asyncio.Lock()
+        self._factory = factory
+        self._args = args
+        self._kwargs = kwargs
 
     async def async_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
-
-        async with self._resolving_lock:
-            return await self._factory(
-                *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-                **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
-            )
+        return await self._factory(
+            *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+            **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
+        )
 
     def sync_resolve(self) -> typing.NoReturn:
         msg = "AsyncFactory cannot be resolved synchronously"
