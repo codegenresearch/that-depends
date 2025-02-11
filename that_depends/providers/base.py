@@ -251,7 +251,7 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
 
 
 ### Key Changes:
-1. **SyntaxError Fix**: Corrected the unterminated string literal in the comment at line 258 by ensuring the comment is properly formatted.
+1. **SyntaxError Fix**: Corrected the unterminated string literal in the comment at line 259 by ensuring the comment is properly formatted.
 2. **Imports**: Ensured `contextlib` is imported directly.
 3. **Type Annotations**: Used `typing.Final` for `resolving_lock` and `context_stack` in `ResourceContext`.
 4. **Static Methods**: Implemented static methods `is_context_stack_async` and `is_context_stack_sync` with correct type hints.
