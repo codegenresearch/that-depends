@@ -12,18 +12,18 @@ P = typing.ParamSpec("P")
 class Singleton(AbstractProvider[T_co]):
     __slots__ = "_factory", "_args", "_kwargs", "_override", "_instance", "_resolving_lock"
 
-    def __init__(self, factory: type[T_co] | typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
+    def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final[typing.Callable[P, T_co]] = factory
-        self._args: typing.Final[tuple] = args
-        self._kwargs: typing.Final[dict[str, typing.Any]] = kwargs
-        self._override: T_co | None = None
-        self._instance: T_co | None = None
-        self._resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
+        self._factory = factory
+        self._args = args
+        self._kwargs = kwargs
+        self._override = None
+        self._instance = None
+        self._resolving_lock = asyncio.Lock()
 
     def __getattr__(self, attr_name: str) -> typing.Any:
         if attr_name.startswith("_"):
-            msg = f"'{type(self).__name__}' object has no attribute '{attr_name}'"
+            msg = f"'{type(self)}' object has no attribute '{attr_name}'"
             raise AttributeError(msg)
         return AttrGetter(provider=self, attr_name=attr_name)
 
@@ -34,6 +34,7 @@ class Singleton(AbstractProvider[T_co]):
         if self._instance is not None:
             return self._instance
 
+        # Ensure that the factory is awaited if it's a coroutine function
         async with self._resolving_lock:
             if self._instance is None:
                 self._instance = await self._factory(
