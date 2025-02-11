@@ -5,6 +5,7 @@ import uuid
 from contextlib import AsyncExitStack
 
 import pytest
+
 from that_depends import BaseContainer, fetch_context_item, providers
 from that_depends.providers import container_context
 from that_depends.providers.base import ResourceContext
@@ -12,9 +13,9 @@ from that_depends.providers.base import ResourceContext
 logger = logging.getLogger(__name__)
 
 def create_sync_context_resource() -> typing.Iterator[str]:
-    logger.info("Resource initiated")
+    logger.info("Sync resource initiated")
     yield f"sync {uuid.uuid4()}"
-    logger.info("Resource destructed")
+    logger.info("Sync resource destructed")
 
 async def create_async_context_resource() -> typing.AsyncIterator[str]:
     logger.info("Async resource initiated")
@@ -54,28 +55,36 @@ async def test_context_resource(context_resource: providers.ContextResource[str]
     context_resource_result = await context_resource()
     assert await context_resource() is context_resource_result
 
-@container_context()
+def sync_container_context(func):
+    async def wrapper(*args, **kwargs):
+        async with container_context():
+            return func(*args, **kwargs)
+    return wrapper
+
+@sync_container_context
 def test_sync_context_resource(sync_context_resource: providers.ContextResource[str]) -> None:
     context_resource_result = sync_context_resource.sync_resolve()
     assert sync_context_resource.sync_resolve() is context_resource_result
 
-async def test_async_context_resource_in_sync_context(async_context_resource: providers.ContextResource[str]) -> None:
-    with pytest.raises(RuntimeError, match="AsyncResource cannot be resolved in an sync context."):
-        await async_context_resource()
+def test_async_context_resource_in_sync_context(async_context_resource: providers.ContextResource[str]) -> None:
+    with pytest.raises(RuntimeError, match="AsyncResource cannot be resolved in a sync context"):
+        async_context_resource.sync_resolve()
 
 @container_context()
-async def test_context_resource_different_context(context_resource: providers.ContextResource[datetime.datetime]) -> None:
+async def test_context_resource_different_context(context_resource: providers.ContextResource[str]) -> None:
     context_resource_instance1 = await context_resource()
-    context_resource_instance2 = await context_resource()
+    async with container_context():
+        context_resource_instance2 = await context_resource()
     assert context_resource_instance1 is not context_resource_instance2
 
 @container_context()
-async def test_context_resource_included_context(context_resource: providers.ContextResource[datetime.datetime]) -> None:
+async def test_context_resource_included_context(context_resource: providers.ContextResource[str]) -> None:
     context_resource_instance1 = await context_resource()
-    context_resource_instance2 = await context_resource()
+    async with container_context():
+        context_resource_instance2 = await context_resource()
     context_resource_instance3 = await context_resource()
     assert context_resource_instance1 is not context_resource_instance2
-    assert context_resource_instance1 is context_resource_instance3
+    assert context_resource_instance1 is not context_resource_instance3
 
 @container_context()
 async def test_context_resources_overriding(context_resource: providers.ContextResource[str]) -> None:
@@ -98,9 +107,12 @@ def test_context_resources_wrong_providers_init() -> None:
 
 @container_context()
 async def test_context_resource_with_dynamic_resource() -> None:
-    assert (await DIContainer.dynamic_context_resource()).startswith("sync")
-    assert (await DIContainer.dynamic_context_resource({"resource_type": "async_"})).startswith("async")
-    assert (await DIContainer.dynamic_context_resource()).startswith("sync")
+    async with container_context({"resource_type": "sync"}):
+        assert (await DIContainer.dynamic_context_resource()).startswith("sync")
+    async with container_context({"resource_type": "async_"}):
+        assert (await DIContainer.dynamic_context_resource()).startswith("async")
+    async with container_context():
+        assert (await DIContainer.dynamic_context_resource()).startswith("sync")
 
 async def test_early_exit_of_container_context() -> None:
     with pytest.raises(RuntimeError, match="Context is not set, call ``__aenter__`` first"):
@@ -109,13 +121,13 @@ async def test_early_exit_of_container_context() -> None:
         container_context().__exit__(None, None, None)
 
 async def test_resource_context_early_teardown() -> None:
-    context = ResourceContext(is_async=True)
+    context: ResourceContext[str] = ResourceContext(is_async=True)
     assert context.context_stack is None
     context.sync_tear_down()
     assert context.context_stack is None
 
 async def test_teardown_sync_container_context_with_async_resource() -> None:
-    resource_context = ResourceContext(is_async=True)
+    resource_context: ResourceContext[typing.Any] = ResourceContext(is_async=True)
     resource_context.context_stack = AsyncExitStack()
     with pytest.raises(RuntimeError, match="Cannot tear down async context in sync mode"):
         resource_context.sync_tear_down()
