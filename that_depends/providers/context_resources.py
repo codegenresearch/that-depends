@@ -25,9 +25,9 @@ ContextType = dict[str, typing.Any]
 
 
 @contextlib.asynccontextmanager
-async def container_context(initial_context_: ContextType | None = None) -> typing.AsyncIterator[None]:
+async def container_context(initial_context: ContextType | None = None) -> typing.AsyncIterator[None]:
     """Manage the context of ContextResources for both sync and async tests."""
-    initial_context = initial_context_ or {}
+    initial_context = initial_context or {}
     initial_context[_ASYNC_CONTEXT_KEY] = True
     token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
     try:
@@ -42,9 +42,9 @@ async def container_context(initial_context_: ContextType | None = None) -> typi
 
 
 @contextlib.contextmanager
-def sync_container_context(initial_context_: ContextType | None = None) -> typing.Iterator[None]:
+def sync_container_context(initial_context: ContextType | None = None) -> typing.Iterator[None]:
     """Manage the context of ContextResources for synchronous tests."""
-    initial_context = initial_context_ or {}
+    initial_context = initial_context or {}
     initial_context[_ASYNC_CONTEXT_KEY] = False
     token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
     try:
