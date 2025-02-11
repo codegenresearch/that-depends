@@ -37,7 +37,7 @@ class BaseContainer:
     @classmethod
     def get_providers(cls) -> dict[str, AbstractProvider[typing.Any]]:
         if not hasattr(cls, "providers"):
-            cls.providers = {k: v for k, v in cls.__dict__.items() if isinstance(v, AbstractProvider)}  # type: ignore[attr-defined]
+            cls.providers = {k: v for k, v in cls.__dict__.items() if isinstance(v, AbstractProvider)}
 
         return cls.providers
 
@@ -59,7 +59,7 @@ class BaseContainer:
 
     @classmethod
     async def init_async_resources(cls) -> None:
-        warnings.warn("init_async_resources is deprecated, use init_resources instead", RuntimeWarning, stacklevel=1)
+        warnings.warn("init_async_resources is deprecated, use init_resources instead", RuntimeWarning, stacklevel=2)
         await cls.init_resources()
 
     @classmethod
@@ -77,14 +77,14 @@ class BaseContainer:
             v.reset_override()
 
     @classmethod
-    def resolver(cls, item: type[T] | typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
+    def resolver(cls, item: typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
         async def _inner() -> T:
             return await cls.resolve(item)
 
         return _inner
 
     @classmethod
-    async def resolve(cls, object_to_resolve: type[T] | typing.Callable[..., T]) -> T:
+    async def resolve(cls, object_to_resolve: typing.Callable[..., T]) -> T:
         signature: typing.Final = inspect.signature(object_to_resolve)
         kwargs = {}
         providers: typing.Final = cls.get_providers()
