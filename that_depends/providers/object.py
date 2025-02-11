@@ -11,7 +11,7 @@ class Object(AbstractProvider[T_co]):
 
     def __init__(self, obj: T_co) -> None:
         super().__init__()
-        self._obj: typing.Final[T_co] = obj
+        self._obj: typing.Final = obj
 
     async def async_resolve(self) -> T_co:
         return self._obj
