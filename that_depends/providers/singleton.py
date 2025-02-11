@@ -14,12 +14,12 @@ class Singleton(AbstractProvider[T_co]):
 
     def __init__(self, factory: type[T_co] | typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final[type[T_co] | typing.Callable[P, T_co]] = factory
-        self._args: typing.Final[tuple] = args
-        self._kwargs: typing.Final[dict[str, typing.Any]] = kwargs
-        self._override: T_co | None = None
-        self._instance: T_co | None = None
-        self._resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
+        self._factory: typing.Final = factory
+        self._args: typing.Final = args
+        self._kwargs: typing.Final = kwargs
+        self._override = None
+        self._instance = None
+        self._resolving_lock: typing.Final = asyncio.Lock()
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         if attr_name.startswith("_"):
@@ -29,7 +29,7 @@ class Singleton(AbstractProvider[T_co]):
 
     async def async_resolve(self) -> T_co:
         if self._override is not None:
-            return typing.cast(T_co, self._override)
+            return self._override
 
         if self._instance is not None:
             return self._instance
@@ -48,7 +48,7 @@ class Singleton(AbstractProvider[T_co]):
 
     def sync_resolve(self) -> T_co:
         if self._override is not None:
-            return typing.cast(T_co, self._override)
+            return self._override
 
         if self._instance is None:
             self._instance = self._factory(
