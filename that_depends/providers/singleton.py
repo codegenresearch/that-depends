@@ -33,10 +33,14 @@ class Singleton(AbstractProvider[T_co]):
         if self._instance is not None:
             return self._instance
 
+        # lock to prevent resolving several times
         async with self._resolving_lock:
             if self._instance is None:
                 try:
-                    self._instance = await self._resolve_instance()
+                    self._instance = self._factory(
+                        *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+                        **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
+                    )
                 except Exception as e:
                     raise RuntimeError(f"Failed to resolve singleton instance: {e}")
             return self._instance
@@ -47,22 +51,14 @@ class Singleton(AbstractProvider[T_co]):
 
         if self._instance is None:
             try:
-                self._instance = self._resolve_instance_sync()
+                self._instance = self._factory(
+                    *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+                    **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
+                )
             except Exception as e:
                 raise RuntimeError(f"Failed to resolve singleton instance: {e}")
         return self._instance
 
-    async def _resolve_instance(self) -> T_co:
-        return self._factory(
-            *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-            **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
-        )
-
-    def _resolve_instance_sync(self) -> T_co:
-        return self._factory(
-            *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-            **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
-        )
-
     async def tear_down(self) -> None:
-        self._instance = None
+        if self._instance is not None:
+            self._instance = None
