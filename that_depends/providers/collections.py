@@ -9,7 +9,7 @@ class List(AbstractProvider[list[T_co]]):
 
     def __init__(self, *providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._providers: Final = providers
+        self._providers: typing.Final = providers
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
@@ -28,7 +28,7 @@ class Dict(AbstractProvider[dict[str, T_co]]):
 
     def __init__(self, **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._providers: Final = providers
+        self._providers: typing.Final = providers
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
