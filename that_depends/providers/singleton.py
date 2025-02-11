@@ -11,7 +11,7 @@ P = typing.ParamSpec("P")
 class Singleton(AbstractProvider[T_co]):
     __slots__ = "_factory", "_args", "_kwargs", "_override", "_instance", "_resolving_lock"
 
-    def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
+    def __init__(self, factory: typing.Callable[P, typing.Awaitable[T_co]], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
         self._factory: typing.Final = factory
         self._args: typing.Final = args
@@ -30,8 +30,14 @@ class Singleton(AbstractProvider[T_co]):
         async with self._resolving_lock:
             if self._instance is None:
                 self._instance = await self._factory(
-                    *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],  # type: ignore[arg-type]
-                    **{k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},  # type: ignore[arg-type]
+                    *[
+                        await x.async_resolve() if isinstance(x, AbstractProvider) else x
+                        for x in self._args
+                    ],  # type: ignore[arg-type]
+                    **{
+                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
+                        for k, v in self._kwargs.items()
+                    },  # type: ignore[arg-type]
                 )
             return self._instance
 
@@ -41,11 +47,20 @@ class Singleton(AbstractProvider[T_co]):
 
         if self._instance is None:
             self._instance = self._factory(
-                *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],  # type: ignore[arg-type]
-                **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},  # type: ignore[arg-type]
+                *[
+                    x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                    for x in self._args
+                ],  # type: ignore[arg-type]
+                **{
+                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                    for k, v in self._kwargs.items()
+                },  # type: ignore[arg-type]
             )
         return self._instance
 
     async def tear_down(self) -> None:
         if self._instance is not None:
             self._instance = None
+
+
+This version ensures that the `_factory` is expected to be an asynchronous callable, and the list and dictionary comprehensions are formatted according to the provided feedback.
