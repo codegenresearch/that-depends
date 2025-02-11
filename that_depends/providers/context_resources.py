@@ -10,11 +10,11 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-logger = logging.getLogger(__name__)
+logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
-_CONTAINER_CONTEXT: typing.Final = ContextVar("CONTAINER_CONTEXT")
-_ASYNC_CONTEXT_KEY: typing.Final = "__ASYNC_CONTEXT__"
+_CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
+_ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
 
 ContextType = dict[str, typing.Any]
 
@@ -99,8 +99,8 @@ class container_context(  # noqa: N801
 
 
 class DIContextMiddleware:
-    def __init__(self, app):
-        self.app = app
+    def __init__(self, app: typing.Callable) -> None:
+        self.app: typing.Final[typing.Callable] = app
 
     @container_context()
     async def __call__(self, scope, receive, send):
@@ -120,7 +120,7 @@ def _is_container_context_async() -> bool:
     :return: Whether the current container context is async.
     :rtype: bool
     """
-    return _get_container_context().get(_ASYNC_CONTEXT_KEY, False)
+    return bool(_get_container_context().get(_ASYNC_CONTEXT_KEY, False))
 
 
 def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401
@@ -144,7 +144,7 @@ class ContextResource(AbstractResource[T_co]):
         **kwargs: P.kwargs,
     ) -> None:
         super().__init__(creator, *args, **kwargs)
-        self._internal_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"
+        self._internal_name: typing.Final[str] = f"{creator.__name__}-{uuid.uuid4()}"
 
     def _fetch_context(self) -> ResourceContext[T_co]:
         container_context = _get_container_context()
