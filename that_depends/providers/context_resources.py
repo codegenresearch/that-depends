@@ -26,12 +26,12 @@ _ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
 ContextType = dict[str, typing.Any]
 
 
-class ContainerContext(  # noqa: N801
+class container_context(  # noqa: N801
     AbstractAsyncContextManager[ContextType], AbstractContextManager[ContextType]
 ):
     """Manage the context of ContextResources.
 
-    Can be entered using ``async with ContainerContext()`` or with ``with ContainerContext()``
+    Can be entered using ``async with container_context()`` or with ``with container_context()``
     as an async-context-manager or context-manager respectively.
     When used as an async-context-manager, it will allow setup & teardown of both sync and async resources.
     When used as an sync-context-manager, it will only allow setup & teardown of sync resources.
@@ -105,7 +105,7 @@ class DIContextMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app: typing.Final = app
 
-    @ContainerContext()
+    @container_context()
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         return await self.app(scope, receive, send)
 
@@ -114,7 +114,7 @@ def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
-        msg = "Context is not set. Use ContainerContext"
+        msg = "Context is not set. Use container_context"
         raise RuntimeError(msg) from exc
 
 
@@ -138,7 +138,7 @@ class ContextResource(AbstractResource[T]):
         "_args",
         "_kwargs",
         "_override",
-        "_resource_name",
+        "_internal_name",
     )
 
     def __init__(
@@ -148,15 +148,15 @@ class ContextResource(AbstractResource[T]):
         **kwargs: P.kwargs,
     ) -> None:
         super().__init__(creator, *args, **kwargs)
-        self._resource_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"
+        self._internal_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"
 
     def _fetch_context(self) -> ResourceContext[T]:
         container_context = _get_container_context()
-        if resource_context := container_context.get(self._resource_name):
+        if resource_context := container_context.get(self._internal_name):
             return typing.cast(ResourceContext[T], resource_context)
 
         resource_context = ResourceContext(is_async=_is_container_context_async())
-        container_context[self._resource_name] = resource_context
+        container_context[self._internal_name] = resource_context
         return resource_context
 
 
