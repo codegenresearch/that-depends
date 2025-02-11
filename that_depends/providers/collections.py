@@ -11,7 +11,7 @@ class List(AbstractProvider[list[T_co]]):
 
     def __init__(self, *providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._providers = providers
+        self._providers: typing.Final[tuple[AbstractProvider[T_co], ...]] = providers
 
     async def async_resolve(self) -> list[T_co]:
         return [await x.async_resolve() for x in self._providers]
@@ -28,7 +28,7 @@ class Dict(AbstractProvider[dict[str, T_co]]):
 
     def __init__(self, **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._providers = providers
+        self._providers: typing.Final[dict[str, AbstractProvider[T_co]]] = providers
 
     async def async_resolve(self) -> dict[str, T_co]:
         return {key: await provider.async_resolve() for key, provider in self._providers.items()}
