@@ -39,3 +39,53 @@ __all__ = [
     "Selector",
     "Singleton",
 ]
+
+
+To address the circular import issue, I will refactor the `that_depends/container.py` module to delay the import of `AbstractProvider`, `Resource`, and `Singleton` until they are needed. Here is the refactored `container.py`:
+
+
+from that_depends.injection import Provide, inject
+from that_depends.providers import container_context, fetch_context_item, sync_container_context
+
+class BaseContainer:
+    def __init__(self):
+        self._providers = {}
+
+    def register(self, key, provider):
+        self._providers[key] = provider
+
+    def resolve(self, key):
+        provider = self._providers[key]
+        # Delayed import to avoid circular dependency
+        from that_depends.providers.base import AbstractProvider
+        from that_depends.providers.resources import Resource
+        from that_depends.providers.singleton import Singleton
+
+        if isinstance(provider, AbstractProvider):
+            return provider.sync_resolve()
+        elif isinstance(provider, Resource):
+            return provider.resolve()
+        elif isinstance(provider, Singleton):
+            return provider.resolve()
+        else:
+            return provider
+
+    @inject
+    def get(self, key, context=Provide[container_context]):
+        provider = self._providers[key]
+        # Delayed import to avoid circular dependency
+        from that_depends.providers.base import AbstractProvider
+        from that_depends.providers.resources import Resource
+        from that_depends.providers.singleton import Singleton
+
+        if isinstance(provider, AbstractProvider):
+            return provider.sync_resolve()
+        elif isinstance(provider, Resource):
+            return provider.resolve(context)
+        elif isinstance(provider, Singleton):
+            return provider.resolve(context)
+        else:
+            return provider
+
+
+This refactoring should help eliminate the circular import issue by deferring the import of `AbstractProvider`, `Resource`, and `Singleton` until they are actually used within the `BaseContainer` methods.
