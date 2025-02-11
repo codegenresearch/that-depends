@@ -10,12 +10,11 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-
-logger: typing.Final = logging.getLogger(__name__)
+logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
 _CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
-AppType = typing.TypeVar("AppType")
+AppType = typing.TypeVar("AppType", covariant=True)
 Scope = typing.MutableMapping[str, typing.Any]
 Message = typing.MutableMapping[str, typing.Any]
 Receive = typing.Callable[[], typing.Awaitable[Message]]
@@ -110,7 +109,7 @@ class container_context(  # noqa: N801
 
 class DIContextMiddleware:
     def __init__(self, app: ASGIApp) -> None:
-        self.app: typing.Final = app
+        self.app: typing.Final[ASGIApp] = app
 
     @container_context()
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
@@ -155,7 +154,7 @@ class ContextResource(AbstractResource[T_co]):
         **kwargs: P.kwargs,
     ) -> None:
         super().__init__(creator, *args, **kwargs)
-        self._internal_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"
+        self._internal_name: typing.Final[str] = f"{creator.__name__}-{uuid.uuid4()}"
 
     def _fetch_context(self) -> ResourceContext[T_co]:
         container_context = _get_container_context()
