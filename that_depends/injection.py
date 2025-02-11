@@ -28,8 +28,9 @@ def _inject_to_async(
     @functools.wraps(func)
     async def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
+        bound_args = signature.bind_partial(*args, **kwargs)
         for field_name, field_value in signature.parameters.items():
-            if field_name in kwargs:
+            if field_name in bound_args.arguments:
                 continue
 
             if not isinstance(field_value.default, AbstractProvider):
@@ -51,15 +52,15 @@ def _inject_to_async(
 def _inject_to_sync(
     func: typing.Callable[P, T],
 ) -> typing.Callable[P, T]:
-    signature = inspect.signature(func)
+    signature: typing.Final = inspect.signature(func)
 
     @functools.wraps(func)
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
+        bound_args = signature.bind_partial(*args, **kwargs)
         for field_name, field_value in signature.parameters.items():
-            if field_name in kwargs:
-                msg = f"Injected arguments must not be redefined, {field_name=}"
-                raise RuntimeError(msg)
+            if field_name in bound_args.arguments:
+                continue
 
             if not isinstance(field_value.default, AbstractProvider):
                 continue
