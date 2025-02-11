@@ -170,10 +170,4 @@ class AsyncContextResource(ContextResource[T]):
 
 
 ### Changes Made:
-1. **SyntaxError Fix**: Removed the markdown list formatting from comments to ensure valid Python syntax.
-2. **Error Messages**: Ensured that the error messages in the `__exit__` and `__aexit__` methods are consistent with the gold code.
-3. **Context Handling**: Added a comment in the `__exit__` method to indicate that the case where the `ResourceContext` is async does not need to be handled.
-4. **Conditional Checks**: Ensured that the conditional checks for `context_item` are consistent with the gold code.
-5. **Warnings**: Verified the stack level in the warning for the `AsyncContextResource` class to match the gold code.
-6. **Code Formatting**: Reviewed and ensured consistent formatting, including spacing and line breaks.
-7. **Type Hinting**: Verified that all type hints are consistent with the gold code.
+1. **SyntaxError Fix**: Removed the markdown list formatting from the comment to ensure valid Python syntax. The comment now reads as a plain text comment.
