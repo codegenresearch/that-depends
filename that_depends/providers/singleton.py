@@ -13,11 +13,11 @@ class Singleton(AbstractProvider[T_co]):
 
     def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._factory: typing.Final[typing.Callable[P, T_co]] = factory
+        self._args: typing.Final[tuple] = args
+        self._kwargs: typing.Final[dict] = kwargs
         self._instance: T_co | None = None
-        self._resolving_lock: typing.Final = asyncio.Lock()
+        self._resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
 
     async def async_resolve(self) -> T_co:
         if self._override is not None:
@@ -30,11 +30,12 @@ class Singleton(AbstractProvider[T_co]):
         async with self._resolving_lock:
             if self._instance is None:
                 self._instance = self._factory(
-                    *[  # type: ignore[arg-type]
-                        await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+                    *[
+                        await x.async_resolve() if isinstance(x, AbstractProvider) else x  # type: ignore[arg-type]
+                        for x in self._args
                     ],
-                    **{  # type: ignore[arg-type]
-                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
+                    **{
+                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v  # type: ignore[arg-type]
                         for k, v in self._kwargs.items()
                     },
                 )
@@ -46,11 +47,13 @@ class Singleton(AbstractProvider[T_co]):
 
         if self._instance is None:
             self._instance = self._factory(
-                *[  # type: ignore[arg-type]
-                    x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+                *[
+                    x.sync_resolve() if isinstance(x, AbstractProvider) else x  # type: ignore[arg-type]
+                    for x in self._args
                 ],
-                **{  # type: ignore[arg-type]
-                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
+                **{
+                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v  # type: ignore[arg-type]
+                    for k, v in self._kwargs.items()
                 },
             )
         return self._instance
