@@ -27,14 +27,18 @@ async def create_async_context_resource() -> typing.AsyncIterator[str]:
 
 
 class DIContainer(BaseContainer):
-    def __init__(self):
-        super().__init__()
-        self.sync_context_resource = providers.ContextResource(create_sync_context_resource)
-        self.async_context_resource = providers.ContextResource(create_async_context_resource)
-        self.dynamic_context_resource = providers.Selector(
+    sync_context_resource: providers.ContextResource[str]
+    async_context_resource: providers.ContextResource[str]
+    dynamic_context_resource: providers.Selector[str]
+
+    @classmethod
+    def initialize_resources(cls) -> None:
+        cls.sync_context_resource = providers.ContextResource(create_sync_context_resource)
+        cls.async_context_resource = providers.ContextResource(create_async_context_resource)
+        cls.dynamic_context_resource = providers.Selector(
             lambda: fetch_context_item("resource_type") or "sync",
-            sync=self.sync_context_resource,
-            async_=self.async_context_resource,
+            sync=cls.sync_context_resource,
+            async_=cls.async_context_resource,
         )
 
     @staticmethod
@@ -44,18 +48,16 @@ class DIContainer(BaseContainer):
     @classmethod
     async def tear_down(cls) -> None:
         async with AsyncExitStack() as stack:
-            for resource in cls.__dict__.values():
-                if isinstance(resource, providers.ContextResource):
-                    await stack.enter_async_context(resource)
+            for resource in [cls.sync_context_resource, cls.async_context_resource]:
+                await stack.enter_async_context(resource)
             await super().tear_down()
 
 
-@pytest.fixture(autouse=True)
-async def _clear_di_container() -> typing.AsyncIterator[None]:
-    try:
-        yield
-    finally:
-        await DIContainer.tear_down()
+@pytest.fixture(scope="session", autouse=True)
+def _initialize_di_container() -> typing.Generator[None, None, None]:
+    DIContainer.initialize_resources()
+    yield
+    DIContainer.tear_down()
 
 
 @pytest.fixture(params=[DIContainer.sync_context_resource, DIContainer.async_context_resource])
@@ -142,6 +144,7 @@ async def test_context_resources_overriding(context_resource: providers.ContextR
 
 
 async def test_context_resources_init_and_tear_down() -> None:
+    DIContainer.initialize_resources()
     await DIContainer.init_resources()
     await DIContainer.tear_down()
 
