@@ -11,6 +11,9 @@ class List(AbstractProvider[list[T_co]]):
         super().__init__()
         self._providers: Final = providers
 
+    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
+
     async def async_resolve(self) -> list[T_co]:
         return [await x.async_resolve() for x in self._providers]
 
@@ -20,9 +23,6 @@ class List(AbstractProvider[list[T_co]]):
     async def __call__(self) -> list[T_co]:
         return await self.async_resolve()
 
-    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
-        raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
-
 class Dict(AbstractProvider[dict[str, T_co]]):
     __slots__ = ("_providers",)
 
@@ -30,11 +30,11 @@ class Dict(AbstractProvider[dict[str, T_co]]):
         super().__init__()
         self._providers: Final = providers
 
+    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
+
     async def async_resolve(self) -> dict[str, T_co]:
         return {key: await provider.async_resolve() for key, provider in self._providers.items()}
 
     def sync_resolve(self) -> dict[str, T_co]:
         return {key: provider.sync_resolve() for key, provider in self._providers.items()}
-
-    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
-        raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
