@@ -13,11 +13,11 @@ class Singleton(AbstractProvider[T_co]):
 
     def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._factory: typing.Final[typing.Callable[P, T_co]] = factory
+        self._args: typing.Final[tuple] = args
+        self._kwargs: typing.Final[dict] = kwargs
         self._instance: T_co | None = None
-        self._resolving_lock: typing.Final = asyncio.Lock()
+        self._resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
 
     async def async_resolve(self) -> T_co:
         if self._override is not None:
@@ -29,15 +29,19 @@ class Singleton(AbstractProvider[T_co]):
         # lock to prevent resolving several times
         async with self._resolving_lock:
             if self._instance is None:
-                self._instance = self._factory(
-                    *[  # type: ignore[arg-type]
-                        await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-                    ],
-                    **{  # type: ignore[arg-type]
-                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
-                        for k, v in self._kwargs.items()
-                    },
-                )
+                try:
+                    self._instance = await self._factory(
+                        *[
+                            await x.async_resolve() if isinstance(x, AbstractProvider) else x
+                            for x in self._args
+                        ],
+                        **{
+                            k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
+                            for k, v in self._kwargs.items()
+                        },
+                    )
+                except Exception as e:
+                    raise RuntimeError(f"Failed to resolve singleton instance: {e}")
             return self._instance
 
     def sync_resolve(self) -> T_co:
@@ -45,14 +49,19 @@ class Singleton(AbstractProvider[T_co]):
             return typing.cast(T_co, self._override)
 
         if self._instance is None:
-            self._instance = self._factory(
-                *[  # type: ignore[arg-type]
-                    x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-                ],
-                **{  # type: ignore[arg-type]
-                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
-                },
-            )
+            try:
+                self._instance = self._factory(
+                    *[
+                        x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                        for x in self._args
+                    ],
+                    **{
+                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                        for k, v in self._kwargs.items()
+                    },
+                )
+            except Exception as e:
+                raise RuntimeError(f"Failed to resolve singleton instance: {e}")
         return self._instance
 
     async def tear_down(self) -> None:
