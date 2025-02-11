@@ -156,6 +156,6 @@ async def test_providers_overriding_sync_resolve() -> None:
 This code snippet addresses the feedback by ensuring:
 1. Consistency in mock object creation.
 2. Proper error handling in the test for unknown providers.
-3. Appropriate use of async and sync calls.
-4. Assertions placed outside of the context manager.
-5. Removal of redundant code and comments to keep the code clean and concise.
+3. Assertions placed outside of the context manager.
+4. Removal of redundant code and comments to keep the code clean and concise.
+5. Appropriate use of async and sync calls.
