@@ -13,7 +13,7 @@ class Selector(AbstractProvider[T_co]):
         super().__init__()
         self._selector: typing.Final = selector
         self._providers: typing.Final = providers
-        self._override: typing.Optional[T_co] = None
+        self._override = None
 
     async def async_resolve(self) -> T_co:
         if self._override:
