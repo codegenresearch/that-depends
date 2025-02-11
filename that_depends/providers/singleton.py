@@ -66,6 +66,3 @@ class Singleton(AbstractProvider[T_co]):
     async def tear_down(self) -> None:
         if self._instance is not None:
             self._instance = None
-
-
-It seems the previous code already includes the check for `self._instance` before acquiring the lock in the `async_resolve` method, which aligns with the feedback. However, I have ensured the logic and structure are consistent with the gold code as per the feedback provided.
