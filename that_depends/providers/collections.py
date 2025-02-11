@@ -13,6 +13,9 @@ class List(AbstractProvider[list[T_co]]):
         super().__init__()
         self._providers: typing.Final = providers
 
+    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
+        raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
+
     async def async_resolve(self) -> list[T_co]:
         return [await x.async_resolve() for x in self._providers]
 
@@ -22,9 +25,6 @@ class List(AbstractProvider[list[T_co]]):
     async def __call__(self) -> list[T_co]:
         return await self.async_resolve()
 
-    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
-
 
 class Dict(AbstractProvider[dict[str, T_co]]):
     __slots__ = ("_providers",)
@@ -32,6 +32,9 @@ class Dict(AbstractProvider[dict[str, T_co]]):
     def __init__(self, **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
         self._providers: typing.Final = providers
+
+    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
+        raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
 
     async def async_resolve(self) -> dict[str, T_co]:
         return {key: await provider.async_resolve() for key, provider in self._providers.items()}
@@ -41,9 +44,3 @@ class Dict(AbstractProvider[dict[str, T_co]]):
 
     async def __call__(self) -> dict[str, T_co]:
         return await self.async_resolve()
-
-    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
-
-
-To align more closely with the gold code, I have ensured the error message format is consistent and the order of methods matches the provided examples. The use of `typing.Final` remains consistent as well.
