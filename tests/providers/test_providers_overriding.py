@@ -162,4 +162,4 @@ This code snippet addresses the feedback by ensuring that:
 3. Method calls for resolving providers are consistent with the gold code.
 4. Assertions are reviewed and match the expected behavior.
 5. Context management and error handling are aligned with the gold code's approach.
-6. Any stray comments or text are properly formatted to avoid syntax errors.
+6. Any stray comments or text are properly formatted as comments to avoid syntax errors.
