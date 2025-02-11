@@ -10,17 +10,11 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
-_CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
-AppType = typing.TypeVar("AppType", covariant=True)
-Scope = typing.MutableMapping[str, typing.Any]
-Message = typing.MutableMapping[str, typing.Any]
-Receive = typing.Callable[[], typing.Awaitable[Message]]
-Send = typing.Callable[[Message], typing.Awaitable[None]]
-ASGIApp = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
-_ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
+_CONTAINER_CONTEXT: typing.Final = ContextVar("CONTAINER_CONTEXT")
+_ASYNC_CONTEXT_KEY: typing.Final = "__ASYNC_CONTEXT__"
 
 ContextType = dict[str, typing.Any]
 
@@ -58,13 +52,11 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            msg = "Context is not set, call ``__enter__`` first"
-            raise RuntimeError(msg)
+            raise RuntimeError("Context is not set, call ``__enter__`` first")
 
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
                 if isinstance(context_item, ResourceContext):
-                    # we don't need to handle the case where the ResourceContext is async
                     context_item.sync_tear_down()
 
         finally:
@@ -74,8 +66,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_val: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            msg = "Context is not set, call ``__aenter__`` first"
-            raise RuntimeError(msg)
+            raise RuntimeError("Context is not set, call ``__aenter__`` first")
 
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -108,11 +99,11 @@ class container_context(  # noqa: N801
 
 
 class DIContextMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app: typing.Final[ASGIApp] = app
+    def __init__(self, app):
+        self.app = app
 
     @container_context()
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+    async def __call__(self, scope, receive, send):
         return await self.app(scope, receive, send)
 
 
@@ -120,8 +111,7 @@ def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
-        msg = "Context is not set. Use container_context"
-        raise RuntimeError(msg) from exc
+        raise RuntimeError("Context is not set. Use container_context") from exc
 
 
 def _is_container_context_async() -> bool:
@@ -130,7 +120,7 @@ def _is_container_context_async() -> bool:
     :return: Whether the current container context is async.
     :rtype: bool
     """
-    return typing.cast(bool, _get_container_context().get(_ASYNC_CONTEXT_KEY, False))
+    return _get_container_context().get(_ASYNC_CONTEXT_KEY, False)
 
 
 def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401
@@ -154,7 +144,7 @@ class ContextResource(AbstractResource[T_co]):
         **kwargs: P.kwargs,
     ) -> None:
         super().__init__(creator, *args, **kwargs)
-        self._internal_name: typing.Final[str] = f"{creator.__name__}-{uuid.uuid4()}"
+        self._internal_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"
 
     def _fetch_context(self) -> ResourceContext[T_co]:
         container_context = _get_container_context()
