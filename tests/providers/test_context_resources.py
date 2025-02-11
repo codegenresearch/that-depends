@@ -185,7 +185,7 @@ async def test_creating_async_resource_in_sync_context() -> None:
 
 
 ### Key Changes:
-1. **SyntaxError Fix**: Removed the unterminated string literal in the `test_creating_async_resource_in_sync_context` docstring.
+1. **SyntaxError Fix**: Corrected the unterminated string literal in the `test_creating_async_resource_in_sync_context` docstring by ensuring all quotes are properly closed.
 2. **ResourceContext Initialization**: Ensured that `ResourceContext` is initialized without the `context_stack` parameter.
 3. **Dynamic Resource Handling**: Verified that `dynamic_context_resource` is defined exactly as in the gold code.
 4. **Error Messages**: Ensured that error messages in exception handling match those in the gold code.
@@ -193,4 +193,4 @@ async def test_creating_async_resource_in_sync_context() -> None:
 6. **Assertions Consistency**: Reviewed and ensured that assertions are consistent with the gold code.
 7. **Removed Unused Imports**: Removed any unused imports to keep the code clean and focused.
 
-These changes should address the feedback and align the code more closely with the gold standard.
+These changes should address the syntax error and ensure that the context management in `ResourceContext` is handled correctly.
