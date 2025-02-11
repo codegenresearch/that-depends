@@ -78,13 +78,13 @@ class ResourceContext(typing.Generic[T_co]):
     @staticmethod
     def is_context_stack_async(
         context_stack: AsyncExitStack | ExitStack | None,
-    ) -> typing.TypeGuard[AsyncExitStack]:
+    ) -> bool:
         return isinstance(context_stack, AsyncExitStack)
 
     @staticmethod
     def is_context_stack_sync(
         context_stack: AsyncExitStack | ExitStack | None,
-    ) -> typing.TypeGuard[ExitStack]:
+    ) -> bool:
         return isinstance(context_stack, ExitStack)
 
     async def tear_down(self) -> None:
@@ -139,12 +139,12 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
 
     def _is_creator_async(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.AsyncIterator[T_co]]]:
+    ) -> bool:
         return self._is_async
 
     def _is_creator_sync(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.Iterator[T_co]]]:
+    ) -> bool:
         return not self._is_async
 
     @abc.abstractmethod
@@ -254,9 +254,9 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
 1. **SyntaxError Fix**: Corrected the unterminated string literal in the comment at line 259 by ensuring the comment is properly formatted.
 2. **Imports**: Ensured `contextlib` is imported directly.
 3. **Type Annotations**: Used `typing.Final` for `resolving_lock` and `context_stack` in `ResourceContext`.
-4. **Static Methods**: Implemented static methods `is_context_stack_async` and `is_context_stack_sync` with correct type hints.
+4. **Static Methods**: Changed the return types of `is_context_stack_async` and `is_context_stack_sync` to `bool` instead of using `typing.TypeGuard`.
 5. **Error Messages**: Ensured error messages are clear and consistent.
 6. **Context Management**: Correctly used `contextlib.asynccontextmanager` and `contextlib.contextmanager` based on the creator's type.
 7. **Code Structure**: Maintained a consistent structure and organization throughout the classes.
-8. **Type Guards**: Ensured type guard methods are correctly implemented and used to enhance type safety.
+8. **Type Guards**: Removed `typing.TypeGuard` from static methods as it is not necessary for these methods.
 9. **Variable Naming**: Ensured variable names are consistent and meaningful, particularly in the context of async and sync operations.
