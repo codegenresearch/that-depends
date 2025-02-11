@@ -27,8 +27,9 @@ def _inject_to_async(
     @functools.wraps(func)
     async def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
-        for field_name, field_value in signature.parameters.items():
-            if field_name in kwargs:
+        bound_args = signature.bind_partial(*args, **kwargs)
+        for i, (field_name, field_value) in enumerate(signature.parameters.items()):
+            if i < len(bound_args.args):
                 continue
 
             if isinstance(field_value.default, AbstractProvider):
@@ -52,10 +53,10 @@ def _inject_to_sync(
     @functools.wraps(func)
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
-        for field_name, field_value in signature.parameters.items():
-            if field_name in kwargs:
-                msg = f"Injected arguments must not be redefined, {field_name=}"
-                raise RuntimeError(msg)
+        bound_args = signature.bind_partial(*args, **kwargs)
+        for i, (field_name, field_value) in enumerate(signature.parameters.items()):
+            if i < len(bound_args.args):
+                continue
 
             if isinstance(field_value.default, AbstractProvider):
                 if inspect.iscoroutinefunction(field_value.default.async_resolve):
@@ -75,13 +76,10 @@ def _inject_to_sync(
 
 class ClassGetItemMeta(type):
     def __getitem__(cls, provider: AbstractProvider[T]) -> T:
+        if inspect.iscoroutinefunction(provider.async_resolve):
+            raise RuntimeError("AsyncResource cannot be resolved synchronously.")
         return typing.cast(T, provider.sync_resolve())
 
 
 class Provide(metaclass=ClassGetItemMeta):
-    def __init__(self, provider: AbstractProvider[T]):
-        super().__init__()
-        self.provider = provider
-
-    def __getattr__(self, item):
-        return getattr(self.provider, item)
+    ...
