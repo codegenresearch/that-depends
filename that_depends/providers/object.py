@@ -9,21 +9,24 @@ P = typing.ParamSpec("P")
 
 
 class Object(AbstractProvider[T_co]):
-    __slots__ = "_obj"
+    __slots__ = ("_obj", "_override")
 
-    def __init__(self, obj: T_co) -> None:
+    def __init__(self, obj: T_co, override: T_co | None = None) -> None:
         super().__init__()
         self._obj: typing.Final = obj
+        self._override: T_co | None = override
 
     async def async_resolve(self) -> T_co:
         return self.sync_resolve()
 
     def sync_resolve(self) -> T_co:
+        if self._override is not None:
+            return typing.cast(T_co, self._override)
         return self._obj
 
 
 class LazyObject(AbstractProvider[T_co]):
-    __slots__ = "_factory", "_args", "_kwargs", "_instance", "_resolving_lock"
+    __slots__ = ("_factory", "_args", "_kwargs", "_instance", "_resolving_lock", "_override")
 
     def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
@@ -32,8 +35,12 @@ class LazyObject(AbstractProvider[T_co]):
         self._kwargs: typing.Final = kwargs
         self._instance: T_co | None = None
         self._resolving_lock: typing.Final = asyncio.Lock()
+        self._override: T_co | None = None
 
     async def async_resolve(self) -> T_co:
+        if self._override is not None:
+            return typing.cast(T_co, self._override)
+
         if self._instance is not None:
             return self._instance
 
@@ -51,6 +58,9 @@ class LazyObject(AbstractProvider[T_co]):
             return self._instance
 
     def sync_resolve(self) -> T_co:
+        if self._override is not None:
+            return typing.cast(T_co, self._override)
+
         if self._instance is not None:
             return self._instance
 
