@@ -84,7 +84,7 @@ class ResourceContext(typing.Generic[T_co]):
         self.instance: T_co | None = None
         self.resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
         self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
-        self.is_async = is_async
+        self.is_async: typing.Final[bool] = is_async
 
     @staticmethod
     def is_context_stack_async(
@@ -138,11 +138,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
     ) -> None:
         super().__init__()
         if inspect.isasyncgenfunction(creator):
-            self._is_async = True
+            self._is_async: typing.Final[bool] = True
         elif inspect.isgeneratorfunction(creator):
-            self._is_async = False
+            self._is_async: typing.Final[bool] = False
         else:
-            msg = f"{type(self).__name__} must be generator function"
+            msg = f"{type(self).__name__} must be a generator function"
             raise RuntimeError(msg)
 
         self._creator: typing.Final[typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]] = creator
@@ -171,14 +171,14 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         if context.instance is not None:
             return context.instance
 
-        if not context.is_async and self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved in an sync context."
+        if not context.is_async and self._is_async:
+            msg = "AsyncResource cannot be resolved in a sync context."
             raise RuntimeError(msg)
 
         # lock to prevent race condition while resolving
         async with context.resolving_lock:
             if context.instance is None:
-                if self._is_creator_async(self._creator):
+                if self._is_async:
                     context.context_stack = contextlib.AsyncExitStack()
                     context.instance = typing.cast(
                         T_co,
@@ -195,7 +195,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                             ),
                         ),
                     )
-                elif self._is_creator_sync(self._creator):
+                else:
                     context.context_stack = contextlib.ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
@@ -219,11 +219,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         if context.instance is not None:
             return context.instance
 
-        if self._is_creator_async(self._creator):
+        if self._is_async:
             msg = "AsyncResource cannot be resolved synchronously"
             raise RuntimeError(msg)
 
-        if self._is_creator_sync(self._creator):
+        if not self._is_async:
             context.context_stack = contextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
