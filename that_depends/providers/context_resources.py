@@ -165,12 +165,3 @@ class AsyncContextResource(ContextResource[T]):
     ) -> None:
         warnings.warn("AsyncContextResource is deprecated, use ContextResource instead", RuntimeWarning, stacklevel=1)
         super().__init__(creator, *args, **kwargs)
-
-
-### Changes Made:
-1. **Removed the misplaced comment**: The comment that was causing the `SyntaxError` has been completely removed.
-2. **Error Messages**: Ensured that the error messages in `__exit__` and `__aexit__` methods are consistent and clear.
-3. **Context Item Handling**: Verified that the handling of `ResourceContext` instances in `__exit__` and `__aexit__` methods is consistent with the gold code.
-4. **Comment Clarity**: Reviewed and ensured that comments accurately reflect the intent of the code.
-5. **Functionality Consistency**: Double-checked that the functionality of `_fetch_context` aligns with the gold code.
-6. **Deprecation Warning**: Ensured that the deprecation warning in `AsyncContextResource` is phrased exactly as in the gold code, including the stack level.
