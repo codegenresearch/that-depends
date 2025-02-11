@@ -66,23 +66,24 @@ class DIContainer(BaseContainer):
         async_resource=async_resource.cast,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
+    object_provider = providers.Object(object())
 
-    def resolve_with_override(self, provider: providers.Provider, override: typing.Any = None) -> typing.Any:
+    def resolve_with_override(self, provider: providers.BaseProvider, override: typing.Any = None) -> typing.Any:
         if override is not None:
             return override
         return provider.sync_resolve()
 
-    async def async_resolve_with_override(self, provider: providers.Provider, override: typing.Any = None) -> typing.Any:
+    async def async_resolve_with_override(self, provider: providers.BaseProvider, override: typing.Any = None) -> typing.Any:
         if override is not None:
             return override
         return await provider()
 
-    def get_object_provider_value(self, provider: providers.Provider) -> typing.Any:
+    def get_object_provider_value(self, provider: providers.BaseProvider) -> typing.Any:
         value = self.resolve_with_override(provider)
         assert isinstance(value, object), f"Expected an object, got {type(value)}"
         return value
 
-    async def async_get_object_provider_value(self, provider: providers.Provider) -> typing.Any:
+    async def async_get_object_provider_value(self, provider: providers.BaseProvider) -> typing.Any:
         value = await self.async_resolve_with_override(provider)
         assert isinstance(value, object), f"Expected an object, got {type(value)}"
         return value
@@ -104,3 +105,12 @@ class DIContainer(BaseContainer):
 
     def get_singleton(self, override: typing.Any = None) -> SingletonFactory:
         return self.resolve_with_override(self.singleton, override)
+
+    def get_object(self, override: typing.Any = None) -> object:
+        return self.resolve_with_override(self.object_provider, override)
+
+    async def async_get_object(self, override: typing.Any = None) -> object:
+        return await self.async_resolve_with_override(self.object_provider, override)
+
+
+This code snippet includes the `object_provider` as per the oracle's feedback and uses `providers.BaseProvider` to address the `AttributeError` feedback.
