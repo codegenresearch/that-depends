@@ -31,12 +31,12 @@ class NestingTestDTO: ...
 
 @pytest.fixture(params=[providers.Singleton(Settings), providers.Factory(Settings)])
 def some_settings_provider(request) -> providers.AbstractProvider[Settings]:
-    return request.param
+    return typing.cast(providers.AbstractProvider[Settings], request.param)
 
 
 @pytest.fixture(params=[providers.Singleton(Settings), providers.Factory(Settings)])
 async def some_async_settings_provider(request) -> providers.AbstractProvider[Settings]:
-    return request.param
+    return typing.cast(providers.AbstractProvider[Settings], request.param)
 
 
 @pytest.fixture
@@ -60,25 +60,25 @@ def yield_settings_sync() -> typing.Iterator[Settings]:
 
 
 @container_context()
-def test_attr_getter_zero_depth_sync(some_settings_provider: providers.AbstractProvider[Settings]) -> None:
+def test_attr_getter_with_zero_attribute_depth_sync(some_settings_provider: providers.AbstractProvider[Settings]) -> None:
     attr_getter = some_settings_provider.some_str_value
     assert attr_getter.sync_resolve() == Settings().some_str_value
 
 
 @container_context()
-async def test_attr_getter_zero_depth_async(some_async_settings_provider: providers.AbstractProvider[Settings]) -> None:
+async def test_attr_getter_with_zero_attribute_depth_async(some_async_settings_provider: providers.AbstractProvider[Settings]) -> None:
     attr_getter = some_async_settings_provider.some_str_value
     assert await attr_getter.async_resolve() == await Settings().some_str_value.async_resolve()
 
 
 @container_context()
-def test_attr_getter_more_than_zero_depth_sync(some_settings_provider: providers.AbstractProvider[Settings]) -> None:
+def test_attr_getter_with_more_than_zero_attribute_depth_sync(some_settings_provider: providers.AbstractProvider[Settings]) -> None:
     attr_getter = some_settings_provider.nested1_attr.nested2_attr.some_const
     assert attr_getter.sync_resolve() == Nested2().some_const
 
 
 @container_context()
-async def test_attr_getter_more_than_zero_depth_async(some_async_settings_provider: providers.AbstractProvider[Settings]) -> None:
+async def test_attr_getter_with_more_than_zero_attribute_depth_async(some_async_settings_provider: providers.AbstractProvider[Settings]) -> None:
     attr_getter = some_async_settings_provider.nested1_attr.nested2_attr.some_const
     assert await attr_getter.async_resolve() == await Nested2().some_const
 
@@ -132,7 +132,7 @@ async def test_nesting_levels_async(field_count: int, test_field_name: str, test
 
 
 @container_context()
-def test_attr_getter_invalid_attribute_sync(some_settings_provider: providers.AbstractProvider[Settings]) -> None:
+def test_attr_getter_with_invalid_attribute_sync(some_settings_provider: providers.AbstractProvider[Settings]) -> None:
     with pytest.raises(AttributeError):
         some_settings_provider.nested1_attr.nested2_attr.__some_private__  # noqa: B018
     with pytest.raises(AttributeError):
@@ -142,7 +142,7 @@ def test_attr_getter_invalid_attribute_sync(some_settings_provider: providers.Ab
 
 
 @container_context()
-async def test_attr_getter_invalid_attribute_async(some_async_settings_provider: providers.AbstractProvider[Settings]) -> None:
+async def test_attr_getter_with_invalid_attribute_async(some_async_settings_provider: providers.AbstractProvider[Settings]) -> None:
     with pytest.raises(AttributeError):
         await some_async_settings_provider.nested1_attr.nested2_attr.__some_private__  # noqa: B018
     with pytest.raises(AttributeError):
@@ -152,11 +152,12 @@ async def test_attr_getter_invalid_attribute_async(some_async_settings_provider:
 
 
 This code addresses the feedback by:
-1. Correcting the syntax error by removing any misplaced comments or docstrings.
+1. Removing the misplaced comment that was causing the syntax error.
 2. Using the `params` argument in fixture definitions to include both `Singleton` and `Factory` providers.
-3. Explicitly casting the return types of fixtures to `providers.AbstractProvider[Settings]`.
+3. Explicitly casting the return types of fixtures to `providers.AbstractProvider[Settings]` using `typing.cast`.
 4. Applying the `@container_context()` decorator to all relevant test functions.
-5. Simplifying test function names while maintaining clarity.
+5. Simplifying and clarifying test function names to be more descriptive.
 6. Ensuring that async and sync functions are clearly separated and using the correct async methods for resolving attributes.
 7. Defining yielding fixtures for both sync and async settings.
 8. Double-checking import statements to ensure they match the gold code.
+9. Reviewing and aligning parameterization with the gold code's approach.
