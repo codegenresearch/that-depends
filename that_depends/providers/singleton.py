@@ -11,7 +11,7 @@ P = typing.ParamSpec("P")
 class Singleton(AbstractProvider[T_co]):
     __slots__ = "_factory", "_args", "_kwargs", "_override", "_instance", "_resolving_lock"
 
-    def __init__(self, factory: typing.Callable[P, typing.Awaitable[T_co]], *args: P.args, **kwargs: P.kwargs) -> None:
+    def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
         self._factory: typing.Final = factory
         self._args: typing.Final = args
@@ -63,4 +63,4 @@ class Singleton(AbstractProvider[T_co]):
             self._instance = None
 
 
-This version ensures that the `_factory` is expected to be an asynchronous callable, and the list and dictionary comprehensions are formatted according to the provided feedback.
+This version ensures that the `_factory` is expected to be a synchronous callable, and the list and dictionary comprehensions are formatted according to the provided feedback. The `# type: ignore[arg-type]` comments are placed directly after the comprehensions for clarity.
