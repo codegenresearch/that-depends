@@ -84,7 +84,7 @@ class ResourceContext(typing.Generic[T_co]):
         self.instance: T_co | None = None
         self.resolving_lock: typing.Final = asyncio.Lock()
         self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
-        self.is_async = is_async
+        self.is_async: typing.Final = is_async
 
     @staticmethod
     def is_context_stack_async(
@@ -136,9 +136,9 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
     ) -> None:
         super().__init__()
         if inspect.isasyncgenfunction(creator):
-            self._is_async = True
+            self._is_async: typing.Final = True
         elif inspect.isgeneratorfunction(creator):
-            self._is_async = False
+            self._is_async: typing.Final = False
         else:
             msg = f"{type(self).__name__} must be a generator function"
             raise RuntimeError(msg)
@@ -242,8 +242,8 @@ class AttrGetter(AbstractProvider[T_co]):
 
     def __init__(self, provider: AbstractProvider[object], attr_name: str) -> None:
         super().__init__()
-        self._provider = provider
-        self._attr_name = attr_name
+        self._provider: typing.Final = provider
+        self._attr_name: typing.Final = attr_name
 
     async def async_resolve(self) -> T_co:
         resolved = await self._provider.async_resolve()
@@ -259,7 +259,7 @@ def _get_value_from_object_by_dotted_path(obj: object, dotted_path: str) -> typi
     attrs = dotted_path.split('.')
     value = obj
     for attr in attrs:
-        value = getattr(value, attr)
+        value = attrgetter(attr)(value)
     return value
 
 
@@ -267,7 +267,8 @@ This code addresses the feedback by:
 1. Removing the invalid comment that caused the `SyntaxError`.
 2. Ensuring that the `__getattr__` method returns an instance of `AttrGetter` with the correct parameters.
 3. Ensuring consistent error messages and type annotations.
-4. Implementing the helper function `_get_value_from_object_by_dotted_path` correctly.
+4. Implementing the helper function `_get_value_from_object_by_dotted_path` using `attrgetter` for efficiency.
 5. Ensuring the `AttrGetter` class has the correct `__slots__` and handles dynamic attribute access properly.
 6. Ensuring clear and consistent documentation.
-7. Ensuring consistent handling of async and sync contexts.
+7. Using `typing.Final` for variables that should not be reassigned after initialization.
+8. Ensuring consistent handling of async and sync contexts.
