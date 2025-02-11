@@ -83,14 +83,14 @@ class ResourceContext(typing.Generic[T_co]):
     @staticmethod
     def is_context_stack_async(
         context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None,
-    ) -> typing.TypeGuard[contextlib.AsyncExitStack]:
+    ) -> bool:
         """Check if the context stack is an instance of AsyncExitStack."""
         return isinstance(context_stack, contextlib.AsyncExitStack)
 
     @staticmethod
     def is_context_stack_sync(
         context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None,
-    ) -> typing.TypeGuard[contextlib.ExitStack]:
+    ) -> bool:
         """Check if the context stack is an instance of ExitStack."""
         return isinstance(context_stack, contextlib.ExitStack)
 
@@ -144,13 +144,13 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
 
     def _is_creator_async(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.AsyncIterator[T_co]]]:
+    ) -> bool:
         """Check if the creator is an async generator function."""
         return self._is_async
 
     def _is_creator_sync(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.Iterator[T_co]]]:
+    ) -> bool:
         """Check if the creator is a sync generator function."""
         return not self._is_async
 
