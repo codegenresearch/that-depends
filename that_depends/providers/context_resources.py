@@ -13,10 +13,15 @@ from that_depends.providers.base import AbstractResource, ResourceContext
 logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
-_CONTAINER_CONTEXT: typing.Final = ContextVar("CONTAINER_CONTEXT")
-_ASYNC_CONTEXT_KEY: typing.Final = "__ASYNC_CONTEXT__"
+_CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
+_ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
 
 ContextType = dict[str, typing.Any]
+ASGIApp = typing.Callable[[dict[str, typing.Any], typing.Callable[[], typing.Awaitable[dict[str, typing.Any]]], typing.Callable[[dict[str, typing.Any]], typing.Awaitable[None]]]
+Scope = dict[str, typing.Any]
+Message = dict[str, typing.Any]
+Receive = typing.Callable[[], typing.Awaitable[Message]]
+Send = typing.Callable[[Message], typing.Awaitable[None]]
 
 
 class container_context(  # noqa: N801
@@ -52,7 +57,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            raise RuntimeError("Context is not set, call `__enter__` first")
+            raise RuntimeError("Context is not set. Use container_context")
 
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -99,11 +104,11 @@ class container_context(  # noqa: N801
 
 
 class DIContextMiddleware:
-    def __init__(self, app: typing.Callable) -> None:
-        self.app: typing.Final[typing.Callable] = app
+    def __init__(self, app: ASGIApp) -> None:
+        self.app: typing.Final[ASGIApp] = app
 
     @container_context()
-    async def __call__(self, scope: dict, receive: typing.Callable, send: typing.Callable) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         return await self.app(scope, receive, send)
 
 
@@ -111,7 +116,7 @@ def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
-        raise RuntimeError("Context is not set; use `container_context`") from exc
+        raise RuntimeError("Context is not set. Use container_context") from exc
 
 
 def _is_container_context_async() -> bool:
