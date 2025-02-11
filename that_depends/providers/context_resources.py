@@ -10,19 +10,19 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
+logger = typing.Final(logging.Logger) = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
-_CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
+_CONTAINER_CONTEXT: typing.Final[ContextVar[typing.Dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
 AppType = typing.TypeVar("AppType", covariant=True)
-Scope = dict[str, typing.Any]
-Message = dict[str, typing.Any]
+Scope = typing.MutableMapping[str, typing.Any]
+Message = typing.MutableMapping[str, typing.Any]
 Receive = typing.Callable[[], typing.Awaitable[Message]]
 Send = typing.Callable[[Message], typing.Awaitable[None]]
 ASGIApp = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
 _ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
 
-ContextType = dict[str, typing.Any]
+ContextType = typing.Dict[str, typing.Any]
 
 
 class container_context(  # noqa: N801
@@ -109,14 +109,14 @@ class container_context(  # noqa: N801
 
 class DIContextMiddleware:
     def __init__(self, app: ASGIApp) -> None:
-        self.app: typing.Final[ASGIApp] = app
+        self.app = typing.Final(app)
 
     @container_context()
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        await self.app(scope, receive, send)
+        return await self.app(scope, receive, send)
 
 
-def _get_container_context() -> dict[str, typing.Any]:
+def _get_container_context() -> typing.Dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
@@ -173,5 +173,5 @@ class AsyncContextResource(ContextResource[T_co]):
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
-        warnings.warn("AsyncContextResource is deprecated, use ContextResource instead", RuntimeWarning, stacklevel=1)
+        warnings.warn("AsyncContextResource is deprecated, use ContextResource instead", RuntimeWarning, stacklevel=2)
         super().__init__(creator, *args, **kwargs)
