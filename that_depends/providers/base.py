@@ -23,7 +23,7 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         if attr_name.startswith("_"):
-            msg = f"'{type(self)}' object has no attribute '{attr_name}'"
+            msg = f"'{type(self).__name__}' object has no attribute '{attr_name}'"
             raise AttributeError(msg)
         return AttrGetter(provider=self, attr_name=attr_name)
 
@@ -142,7 +142,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         elif inspect.isgeneratorfunction(creator):
             self._is_async: typing.Final[bool] = False
         else:
-            msg = f"{type(self).__name__} must be generator function"
+            msg = f"{type(self).__name__} must be a generator function"
             raise RuntimeError(msg)
 
         self._creator: typing.Final[typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]] = creator
@@ -172,7 +172,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_async:
-            msg = "AsyncResource cannot be resolved in an sync context."
+            msg = "AsyncResource cannot be resolved in a sync context."
             raise RuntimeError(msg)
 
         # lock to prevent race condition while resolving
@@ -264,12 +264,12 @@ class AttrGetter(
 
     def __init__(self, provider: AbstractProvider[T_co], attr_name: str) -> None:
         super().__init__()
-        self._provider = provider
-        self._attrs = [attr_name]
+        self._provider: typing.Final[AbstractProvider[T_co]] = provider
+        self._attrs: typing.Final[list[str]] = [attr_name]
 
     def __getattr__(self, attr: str) -> "AttrGetter[T_co]":
         if attr.startswith("_"):
-            msg = f"'{type(self)}' object has no attribute '{attr}'"
+            msg = f"'{type(self).__name__}' object has no attribute '{attr}'"
             raise AttributeError(msg)
         self._attrs.append(attr)
         return self
