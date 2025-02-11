@@ -13,15 +13,16 @@ from that_depends.providers.base import AbstractResource, ResourceContext
 logger: typing.Final[logging.Logger] = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
-_CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
+_CONTAINER_CONTEXT: typing.Final[ContextVar[typing.MutableMapping[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
 _ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
-
-ContextType = dict[str, typing.Any]
-ASGIApp = typing.Callable[[dict[str, typing.Any], typing.Callable[[], typing.Awaitable[dict[str, typing.Any]]], typing.Callable[[dict[str, typing.Any]], typing.Awaitable[None]]]
-Scope = dict[str, typing.Any]
-Message = dict[str, typing.Any]
+AppType = typing.TypeVar("AppType")
+Scope = typing.MutableMapping[str, typing.Any]
+Message = typing.MutableMapping[str, typing.Any]
 Receive = typing.Callable[[], typing.Awaitable[Message]]
 Send = typing.Callable[[Message], typing.Awaitable[None]]
+ASGIApp = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
+
+ContextType = typing.MutableMapping[str, typing.Any]
 
 
 class container_context(  # noqa: N801
@@ -112,7 +113,7 @@ class DIContextMiddleware:
         return await self.app(scope, receive, send)
 
 
-def _get_container_context() -> dict[str, typing.Any]:
+def _get_container_context() -> ContextType:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
