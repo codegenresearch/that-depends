@@ -25,13 +25,13 @@ ContextType = dict[str, typing.Any]
 
 
 @asynccontextmanager
-async def container_context(initial_context: ContextType | None = None) -> typing.AsyncGenerator[ContextType, None]:
+async def container_context(initial_context_: ContextType | None = None) -> typing.AsyncGenerator[None, None]:
     """Manage the context of ContextResources for both sync and async tests."""
-    context = initial_context or {}
+    context = initial_context_ or {}
     context[_ASYNC_CONTEXT_KEY] = True
     token = _CONTAINER_CONTEXT.set(context)
     try:
-        yield _CONTAINER_CONTEXT.get()
+        yield
     finally:
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -45,13 +45,13 @@ async def container_context(initial_context: ContextType | None = None) -> typin
 
 
 @contextmanager
-def sync_container_context(initial_context: ContextType | None = None) -> typing.Generator[ContextType, None, None]:
+def sync_container_context(initial_context_: ContextType | None = None) -> typing.Generator[None, None, None]:
     """Manage the context of ContextResources for synchronous tests."""
-    context = initial_context or {}
+    context = initial_context_ or {}
     context[_ASYNC_CONTEXT_KEY] = False
     token = _CONTAINER_CONTEXT.set(context)
     try:
-        yield _CONTAINER_CONTEXT.get()
+        yield
     finally:
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -61,29 +61,11 @@ def sync_container_context(initial_context: ContextType | None = None) -> typing
             _CONTAINER_CONTEXT.reset(token)
 
 
-def container_context_decorator(func: typing.Callable[P, T]) -> typing.Callable[P, T]:
-    if inspect.iscoroutinefunction(func):
-
-        @wraps(func)
-        async def _async_inner(*args: P.args, **kwargs: P.kwargs) -> T:
-            async with container_context():
-                return await func(*args, **kwargs)  # type: ignore[no-any-return]
-
-        return typing.cast(typing.Callable[P, T], _async_inner)
-
-    @wraps(func)
-    def _sync_inner(*args: P.args, **kwargs: P.kwargs) -> T:
-        with sync_container_context():
-            return func(*args, **kwargs)
-
-    return _sync_inner
-
-
 class DIContextMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app: typing.Final = app
 
-    @container_context_decorator
+    @container_context()
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         return await self.app(scope, receive, send)
 
@@ -91,8 +73,8 @@ class DIContextMiddleware:
 def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
-    except LookupError:
-        raise RuntimeError("Context is not set. Use container_context")
+    except LookupError as exc:
+        raise RuntimeError("Context is not set. Use container_context") from exc
 
 
 def _is_container_context_async() -> bool:
@@ -101,7 +83,7 @@ def _is_container_context_async() -> bool:
     :return: Whether the current container context is async.
     :rtype: bool
     """
-    return _get_container_context().get(_ASYNC_CONTEXT_KEY, False)
+    return typing.cast(bool, _get_container_context().get(_ASYNC_CONTEXT_KEY, False))
 
 
 def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401
