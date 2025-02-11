@@ -64,7 +64,7 @@ def _inject_to_sync(
                 kwargs[field_name] = field_value.default.sync_resolve()
                 injected = True
             elif field_name in kwargs:
-                raise RuntimeError(f"Injected arguments must not be redefined, {field_name=}")
+                raise RuntimeError(f"Injected argument '{field_name}' is redefined.")
 
         if not injected:
             warnings.warn(
