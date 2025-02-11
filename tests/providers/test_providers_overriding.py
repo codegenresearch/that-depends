@@ -29,13 +29,13 @@ async def test_batch_providers_overriding() -> None:
         async_factory = await container.DIContainer.async_factory()
         obj = await container.DIContainer.object()  # Use "object" instead of "object_provider"
 
-        assert dependent_factory.simple_factory.dep1 == simple_factory_mock.dep1
-        assert dependent_factory.simple_factory.dep2 == simple_factory_mock.dep2
-        assert dependent_factory.sync_resource == sync_resource_mock
-        assert dependent_factory.async_resource == async_resource_mock
-        assert singleton is singleton_mock
-        assert async_factory is async_factory_mock
-        assert obj is object_mock
+    assert dependent_factory.simple_factory.dep1 == simple_factory_mock.dep1
+    assert dependent_factory.simple_factory.dep2 == simple_factory_mock.dep2
+    assert dependent_factory.sync_resource == sync_resource_mock
+    assert dependent_factory.async_resource == async_resource_mock
+    assert singleton is singleton_mock
+    assert async_factory is async_factory_mock
+    assert obj is object_mock
 
     container.DIContainer.reset_override()
     assert (await container.DIContainer.async_resource()) != async_resource_mock
@@ -62,12 +62,12 @@ async def test_batch_providers_overriding_sync_resolve() -> None:
         singleton = container.DIContainer.singleton.sync_resolve()
         obj = container.DIContainer.object.sync_resolve()  # Use "object" instead of "object_provider"
 
-        assert dependent_factory.simple_factory.dep1 == simple_factory_mock.dep1
-        assert dependent_factory.simple_factory.dep2 == simple_factory_mock.dep2
-        assert dependent_factory.sync_resource == sync_resource_mock
-        assert dependent_factory.async_resource == async_resource_mock
-        assert singleton is singleton_mock
-        assert obj is object_mock
+    assert dependent_factory.simple_factory.dep1 == simple_factory_mock.dep1
+    assert dependent_factory.simple_factory.dep2 == simple_factory_mock.dep2
+    assert dependent_factory.sync_resource == sync_resource_mock
+    assert dependent_factory.async_resource == async_resource_mock
+    assert singleton is singleton_mock
+    assert obj is object_mock
 
     container.DIContainer.reset_override()
     assert container.DIContainer.sync_resource.sync_resolve() != sync_resource_mock
@@ -85,10 +85,9 @@ def test_providers_overriding_with_context_manager() -> None:
 def test_providers_overriding_fail_with_unknown_provider() -> None:
     unknown_provider_name = "unknown_provider_name"
     match = f"Provider with name {unknown_provider_name!r} not found"
-    providers_for_overriding = {unknown_provider_name: None}
 
     with pytest.raises(RuntimeError, match=match):
-        with container.DIContainer.override_providers(providers_for_overriding):
+        with container.DIContainer.override_providers({unknown_provider_name: None}):
             ...  # pragma: no cover
 
 
@@ -154,4 +153,9 @@ async def test_providers_overriding_sync_resolve() -> None:
     assert container.DIContainer.sync_resource.sync_resolve() != sync_resource_mock
 
 
-This code snippet addresses the feedback by ensuring consistency in mock object creation, provider dictionary structure, context manager usage, assertions, and error handling. It also maintains the correct order and format of assertions and ensures that async and sync calls are used consistently.
+This code snippet addresses the feedback by ensuring that:
+1. All assertions are placed outside of the context manager.
+2. The creation of mock objects is consistent.
+3. Error handling is structured correctly.
+4. Async and sync calls are used appropriately.
+5. Redundant code or comments are removed to keep the code clean and concise.
