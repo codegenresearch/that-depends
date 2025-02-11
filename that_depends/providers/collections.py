@@ -23,7 +23,7 @@ class List(AbstractProvider[list[T_co]]):
         return await self.async_resolve()
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
+        raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
 
 
 class Dict(AbstractProvider[dict[str, T_co]]):
@@ -39,5 +39,8 @@ class Dict(AbstractProvider[dict[str, T_co]]):
     def sync_resolve(self) -> dict[str, T_co]:
         return {key: provider.sync_resolve() for key, provider in self._providers.items()}
 
+    async def __call__(self) -> dict[str, T_co]:
+        return await self.async_resolve()
+
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
+        raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
