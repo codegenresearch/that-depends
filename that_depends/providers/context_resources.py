@@ -10,12 +10,11 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-
 logger: typing.Final = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
 _CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
-AppType = typing.TypeVar("AppType")
+AppType = typing.TypeVar("AppType", covariant=True)
 Scope = typing.MutableMapping[str, typing.Any]
 Message = typing.MutableMapping[str, typing.Any]
 Receive = typing.Callable[[], typing.Awaitable[Message]]
@@ -63,7 +62,9 @@ class container_context(  # noqa: N801
             raise RuntimeError(msg)
 
         try:
-            for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
+            context = _CONTAINER_CONTEXT.get()
+            for key in reversed(context.keys()):
+                context_item = context[key]
                 if isinstance(context_item, ResourceContext):
                     # we don't need to handle the case where the ResourceContext is async
                     context_item.sync_tear_down()
@@ -79,7 +80,9 @@ class container_context(  # noqa: N801
             raise RuntimeError(msg)
 
         try:
-            for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
+            context = _CONTAINER_CONTEXT.get()
+            for key in reversed(context.keys()):
+                context_item = context[key]
                 if not isinstance(context_item, ResourceContext):
                     continue
 
