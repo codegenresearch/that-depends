@@ -15,11 +15,13 @@ P = typing.ParamSpec("P")
 class AbstractProvider(typing.Generic[T_co], abc.ABC):
     """Abstract Provider Class."""
 
+    __slots__ = "_override"
+
     def __init__(self) -> None:
         super().__init__()
         self._override: typing.Any = None
 
-    def __getattr__(self, attr_name: str) -> typing.Any:
+    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         if attr_name.startswith("_"):
             msg = f"'{type(self)}' object has no attribute '{attr_name}'"
             raise AttributeError(msg)
@@ -126,6 +128,8 @@ class ResourceContext(typing.Generic[T_co]):
 
 
 class AbstractResource(AbstractProvider[T_co], abc.ABC):
+    __slots__ = "_creator", "_args", "_kwargs", "_is_async"
+
     def __init__(
         self,
         creator: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]],
@@ -248,7 +252,7 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
         return self.sync_resolve
 
 
-def _get_value_from_object_by_dotted_path(obj: typing.Any, path: str) -> typing.Any:
+def _get_value_from_object_by_dotted_path(obj: typing.Any, path: str) -> typing.Any:  # noqa: ANN401
     attribute_getter = attrgetter(path)
     return attribute_getter(obj)
 
@@ -270,12 +274,12 @@ class AttrGetter(
         self._attrs.append(attr)
         return self
 
-    async def async_resolve(self) -> typing.Any:
+    async def async_resolve(self) -> typing.Any:  # noqa: ANN401
         resolved_provider_object = await self._provider.async_resolve()
         attribute_path = ".".join(self._attrs)
         return _get_value_from_object_by_dotted_path(resolved_provider_object, attribute_path)
 
-    def sync_resolve(self) -> typing.Any:
+    def sync_resolve(self) -> typing.Any:  # noqa: ANN401
         resolved_provider_object = self._provider.sync_resolve()
         attribute_path = ".".join(self._attrs)
         return _get_value_from_object_by_dotted_path(resolved_provider_object, attribute_path)
