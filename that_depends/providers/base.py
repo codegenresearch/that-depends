@@ -213,7 +213,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             raise RuntimeError(msg)
 
         if self._is_creator_sync(self._creator):
-            context.context_stack = contextlib.ExitStack()
+            context.context_stack = contextcontextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
                     *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
