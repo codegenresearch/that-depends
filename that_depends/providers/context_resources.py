@@ -10,19 +10,19 @@ from types import TracebackType
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-logger = typing.Final(logging.Logger) = logging.getLogger(__name__)
+logger: typing.Final = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
-_CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
+_CONTAINER_CONTEXT: typing.Final[ContextVar[typing.MutableMapping[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
 _ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
 AppType = typing.TypeVar("AppType")
-Scope = dict[str, typing.Any]
-Message = dict[str, typing.Any]
+Scope = typing.MutableMapping[str, typing.Any]
+Message = typing.MutableMapping[str, typing.Any]
 Receive = typing.Callable[[], typing.Awaitable[Message]]
 Send = typing.Callable[[Message], typing.Awaitable[None]]
 ASGIApp = typing.Callable[[Scope, Receive, Send], typing.Awaitable[None]]
 
-ContextType = dict[str, typing.Any]
+ContextType = typing.MutableMapping[str, typing.Any]
 
 
 class container_context(  # noqa: N801
@@ -58,7 +58,7 @@ class container_context(  # noqa: N801
         self, exc_type: type[BaseException] | None, exc_value: BaseException | None, traceback: TracebackType | None
     ) -> None:
         if self._context_token is None:
-            raise RuntimeError("Context is not set. Use container_context")
+            raise RuntimeError("Context is not set, call ``__enter__`` first")
 
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
@@ -106,14 +106,14 @@ class container_context(  # noqa: N801
 
 class DIContextMiddleware:
     def __init__(self, app: ASGIApp) -> None:
-        self.app = typing.Final(app)
+        self.app: typing.Final = app
 
     @container_context()
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         return await self.app(scope, receive, send)
 
 
-def _get_container_context() -> ContextType:
+def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
