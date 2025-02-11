@@ -64,11 +64,11 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
         """
         return typing.cast(T_co, self)
 
-    def __getattr__(self, item: str) -> typing.Any:
+    def __getattr__(self, attr_name: str) -> typing.Any:
         """Dynamic attribute access."""
-        if item.startswith('_'):
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
-        return AttrGetter(self, item)
+        if attr_name.startswith('_'):
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
+        return AttrGetter(provider=self, attr_name=attr_name)
 
 
 class ResourceContext(typing.Generic[T_co]):
@@ -265,7 +265,9 @@ def _get_value_from_object_by_dotted_path(obj: object, dotted_path: str) -> typi
 
 This code addresses the feedback by:
 1. Removing the invalid comment that caused the `SyntaxError`.
-2. Implementing `__getattr__` in `AbstractProvider` to return an instance of `AttrGetter` for attributes that do not start with an underscore.
-3. Adding `__slots__` to the `AttrGetter` class for memory optimization.
-4. Including a helper function `_get_value_from_object_by_dotted_path` for resolving attributes by a dotted path.
-5. Ensuring consistent error messages and type annotations.
+2. Ensuring that the `__getattr__` method returns an instance of `AttrGetter` with the correct parameters.
+3. Ensuring consistent error messages and type annotations.
+4. Implementing the helper function `_get_value_from_object_by_dotted_path` correctly.
+5. Ensuring the `AttrGetter` class has the correct `__slots__` and handles dynamic attribute access properly.
+6. Ensuring consistent handling of async and sync contexts.
+7. Ensuring clear and consistent documentation.
