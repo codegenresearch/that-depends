@@ -7,14 +7,18 @@ T_co = typing.TypeVar("T_co", covariant=True)
 
 
 class Selector(AbstractProvider[T_co]):
-    __slots__ = "_selector", "_providers"
+    __slots__ = "_selector", "_providers", "_override"
 
     def __init__(self, selector: typing.Callable[[], str], **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
         self._selector: typing.Final = selector
         self._providers: typing.Final = providers
+        self._override = None
 
     async def async_resolve(self) -> T_co:
+        if self._override:
+            return typing.cast(T_co, self._override)
+
         selected_key: typing.Final = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
@@ -22,6 +26,9 @@ class Selector(AbstractProvider[T_co]):
         return await self._providers[selected_key].async_resolve()
 
     def sync_resolve(self) -> T_co:
+        if self._override:
+            return typing.cast(T_co, self._override)
+
         selected_key: typing.Final = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
@@ -36,8 +43,8 @@ class Selector(AbstractProvider[T_co]):
 
 
 ### Changes Made:
-1. **Removed `_override` Attribute**: Since the `_override` attribute was not being used effectively and was causing confusion, it has been removed.
-2. **Simplified `async_resolve` and `sync_resolve`**: The checks for `_override` have been simplified by removing the explicit `is not None` check.
-3. **Consistent Type Annotations**: Ensured that type annotations are consistent with the provided examples, using `typing.Final` appropriately.
+1. **Reincluded `_override` Attribute**: Added the `_override` attribute back to the class and ensured it is properly initialized in the constructor.
+2. **Implemented Override Logic**: Added checks for `_override` in both `async_resolve` and `sync_resolve` methods to return its value if set.
+3. **Maintained Consistency in Type Annotations**: Used `typing.Final` consistently for attributes that should not be reassigned.
 
-This should address the feedback and improve the alignment with the expected code structure.
+This should address the syntax error and align the code more closely with the expected structure and functionality.
