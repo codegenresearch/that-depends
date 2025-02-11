@@ -16,11 +16,12 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
 
     def __init__(self) -> None:
         super().__init__()
-        self._override = None
+        self._override: typing.Any = None
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         if attr_name.startswith("_"):
-            raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
+            msg = f"'{type(self).__name__}' object has no attribute '{attr_name}'"
+            raise AttributeError(msg)
         return AttrGetter(provider=self, attr_name=attr_name)
 
     @abc.abstractmethod
@@ -77,10 +78,10 @@ class ResourceContext(typing.Generic[T_co]):
         For example within a ``async with container_context(): ...`` statement.
         :type is_async: bool
         """
-        self.instance = None
-        self.resolving_lock = asyncio.Lock()
-        self.context_stack = None
-        self.is_async = is_async
+        self.instance: T_co | None = None
+        self.resolving_lock: asyncio.Lock = asyncio.Lock()
+        self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
+        self.is_async: bool = is_async
 
     @staticmethod
     def is_context_stack_async(
@@ -119,7 +120,8 @@ class ResourceContext(typing.Generic[T_co]):
             self.context_stack = None
             self.instance = None
         elif self.is_context_stack_async(self.context_stack):
-            raise RuntimeError("Cannot tear down async context in sync mode")
+            msg = "Cannot tear down async context in sync mode"
+            raise RuntimeError(msg)
 
 
 class AbstractResource(AbstractProvider[T_co], abc.ABC):
@@ -131,15 +133,16 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
     ) -> None:
         super().__init__()
         if inspect.isasyncgenfunction(creator):
-            self._is_async = True
+            self._is_async: bool = True
         elif inspect.isgeneratorfunction(creator):
-            self._is_async = False
+            self._is_async: bool = False
         else:
-            raise RuntimeError(f"{type(self).__name__} must be generator function")
+            msg = f"{type(self).__name__} must be generator function"
+            raise RuntimeError(msg)
 
-        self._creator = creator
-        self._args = args
-        self._kwargs = kwargs
+        self._creator: typing.Final = creator
+        self._args: typing.Final = args
+        self._kwargs: typing.Final = kwargs
 
     def _is_creator_async(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
@@ -164,7 +167,8 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async(self._creator):
-            raise RuntimeError("AsyncResource cannot be resolved in an sync context.")
+            msg = "AsyncResource cannot be resolved in an sync context."
+            raise RuntimeError(msg)
 
         # lock to prevent race condition while resolving
         async with context.resolving_lock:
@@ -211,7 +215,8 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if self._is_creator_async(self._creator):
-            raise RuntimeError("AsyncResource cannot be resolved synchronously")
+            msg = "AsyncResource cannot be resolved synchronously"
+            raise RuntimeError(msg)
 
         if self._is_creator_sync(self._creator):
             context.context_stack = contextlib.ExitStack()
@@ -252,12 +257,13 @@ class AttrGetter(AbstractProvider[T_co]):
 
     def __init__(self, provider: AbstractProvider[T_co], attr_name: str) -> None:
         super().__init__()
-        self._provider = provider
-        self._attrs = [attr_name]
+        self._provider: AbstractProvider[T_co] = provider
+        self._attrs: list[str] = [attr_name]
 
     def __getattr__(self, attr: str) -> "AttrGetter[T_co]":
         if attr.startswith("_"):
-            raise AttributeError(f"'{type(self)}' object has no attribute '{attr}'")
+            msg = f"'{type(self).__name__}' object has no attribute '{attr}'"
+            raise AttributeError(msg)
         self._attrs.append(attr)
         return self
 
