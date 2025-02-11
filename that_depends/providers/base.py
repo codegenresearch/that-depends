@@ -7,7 +7,6 @@ from contextlib import contextmanager
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
-R = typing.TypeVar("R")
 P = typing.ParamSpec("P")
 
 
@@ -16,7 +15,7 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
 
     def __init__(self) -> None:
         super().__init__()
-        self._override: typing.Any = None
+        self._override: T_co | None = None
 
     @abc.abstractmethod
     async def async_resolve(self) -> T_co:
@@ -29,11 +28,11 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
     async def __call__(self) -> T_co:
         return await self.async_resolve()
 
-    def override(self, mock: object) -> None:
+    def override(self, mock: T_co) -> None:
         self._override = mock
 
     @contextmanager
-    def override_context(self, mock: object) -> typing.Iterator[None]:
+    def override_context(self, mock: T_co) -> typing.Iterator[None]:
         self.override(mock)
         try:
             yield
@@ -174,9 +173,9 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                         T_co,
                         await context.context_stack.enter_async_context(
                             contextlib.asynccontextmanager(self._creator)(
-                                *[await x() if isinstance(x, AbstractProvider) else x for x in self._args],
+                                *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
                                 **{
-                                    k: await v() if isinstance(v, AbstractProvider) else v
+                                    k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                     for k, v in self._kwargs.items()
                                 },
                             ),
@@ -186,11 +185,8 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                     context.context_stack = contextlib.ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
-                            *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
-                            **{
-                                k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
-                                for k, v in self._kwargs.items()
-                            },
+                            *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+                            **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
                         ),
                     )
             return typing.cast(T_co, context.instance)
