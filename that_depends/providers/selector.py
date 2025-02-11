@@ -13,23 +13,27 @@ class Selector(AbstractProvider[T_co]):
         super().__init__()
         self._selector: typing.Final = selector
         self._providers: typing.Final = providers
+        self._override = None
 
     async def async_resolve(self) -> T_co:
-        if self._override:
+        if self._override is not None:
             return typing.cast(T_co, self._override)
 
-        selected_key: typing.Final = self._selector()
+        selected_key = self._selector()
         if selected_key not in self._providers:
-            msg = f"No provider matches {selected_key}"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"No provider matches {selected_key}")
         return await self._providers[selected_key].async_resolve()
 
     def sync_resolve(self) -> T_co:
-        if self._override:
+        if self._override is not None:
             return typing.cast(T_co, self._override)
 
-        selected_key: typing.Final = self._selector()
+        selected_key = self._selector()
         if selected_key not in self._providers:
-            msg = f"No provider matches {selected_key}"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"No provider matches {selected_key}")
         return self._providers[selected_key].sync_resolve()
+
+    def __getattr__(self, attr_name: str) -> typing.Any:
+        if attr_name in self._providers:
+            return self._providers[attr_name]
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr_name}'")
