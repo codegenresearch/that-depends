@@ -1,4 +1,5 @@
 import typing
+import asyncio
 
 from that_depends.providers.base import AbstractProvider
 
@@ -13,6 +14,7 @@ class Selector(AbstractProvider[T_co]):
         super().__init__()
         self._selector: typing.Final = selector
         self._providers: typing.Final = providers
+        self._override = None
 
     async def async_resolve(self) -> T_co:
         if self._override:
@@ -33,3 +35,7 @@ class Selector(AbstractProvider[T_co]):
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
         return self._providers[selected_key].sync_resolve()
+
+    def __getattr__(self, attr_name: str) -> typing.Any:
+        msg = f"'{type(self)}' object has no attribute '{attr_name}'"
+        raise AttributeError(msg)
