@@ -3,7 +3,6 @@ import warnings
 
 from that_depends.providers.base import AbstractResource, ResourceContext
 
-
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
 
