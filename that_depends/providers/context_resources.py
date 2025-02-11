@@ -61,7 +61,7 @@ class container_context(  # noqa: N801
             raise RuntimeError(msg)
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
-                if isinstance(context_item, ResourceContext) and not context_item.is_context_stack_async(context_item.context_stack):
+                if isinstance(context_item, ResourceContext) and not context_item.is_async:
                     context_item.sync_tear_down()
 
         finally:
@@ -76,7 +76,7 @@ class container_context(  # noqa: N801
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
                 if isinstance(context_item, ResourceContext):
-                    if context_item.is_context_stack_async(context_item.context_stack):
+                    if context_item.is_async:
                         await context_item.tear_down()
                     else:
                         context_item.sync_tear_down()
@@ -155,7 +155,7 @@ class ContextResource(AbstractResource[T]):
         if resource_context := container_context.get(self._internal_name):
             return typing.cast(ResourceContext[T], resource_context)
 
-        resource_context = ResourceContext(is_async=_is_container_context_async())
+        resource_context = ResourceContext(is_async=self._is_async)
         container_context[self._internal_name] = resource_context
         return resource_context
 
