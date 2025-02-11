@@ -13,7 +13,6 @@ from that_depends.providers.resources import AsyncResource, Resource
 from that_depends.providers.selector import Selector
 from that_depends.providers.singleton import Singleton
 
-
 __all__ = [
     "AbstractProvider",
     "AsyncContextResource",
@@ -31,6 +30,3 @@ __all__ = [
     "Singleton",
     "container_context",
 ]
-
-
-The provided code snippet is an `__init__.py` file that exports various classes and functions from the `that_depends` package. Since the code snippet does not contain any methods or logic that need to be rewritten according to the rules (it only imports and exports), no changes were made. The rules are more applicable to code that includes method definitions and logic.
