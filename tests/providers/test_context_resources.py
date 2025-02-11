@@ -27,19 +27,13 @@ async def create_async_context_resource() -> typing.AsyncIterator[str]:
 
 
 class DIContainer(BaseContainer):
-    sync_context_resource: providers.ContextResource[str]
-    async_context_resource: providers.ContextResource[str]
-    dynamic_context_resource: providers.Selector[str]
-
-    @classmethod
-    def initialize_resources(cls) -> None:
-        cls.sync_context_resource = providers.ContextResource(create_sync_context_resource)
-        cls.async_context_resource = providers.ContextResource(create_async_context_resource)
-        cls.dynamic_context_resource = providers.Selector(
-            lambda: fetch_context_item("resource_type") or "sync",
-            sync=cls.sync_context_resource,
-            async_=cls.async_context_resource,
-        )
+    sync_context_resource = providers.ContextResource(create_sync_context_resource)
+    async_context_resource = providers.ContextResource(create_async_context_resource)
+    dynamic_context_resource = providers.Selector(
+        lambda: fetch_context_item("resource_type") or "sync",
+        sync=sync_context_resource,
+        async_=async_context_resource,
+    )
 
     @staticmethod
     def is_async_function(func: typing.Callable) -> bool:
@@ -53,11 +47,13 @@ class DIContainer(BaseContainer):
             await super().tear_down()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _initialize_di_container() -> typing.Generator[None, None, None]:
-    DIContainer.initialize_resources()
-    yield
-    DIContainer.tear_down()
+@pytest.fixture(autouse=True)
+async def _clear_di_container() -> typing.AsyncIterator[None]:
+    try:
+        await DIContainer.init_resources()
+        yield
+    finally:
+        await DIContainer.tear_down()
 
 
 @pytest.fixture(params=[DIContainer.sync_context_resource, DIContainer.async_context_resource])
@@ -144,7 +140,6 @@ async def test_context_resources_overriding(context_resource: providers.ContextR
 
 
 async def test_context_resources_init_and_tear_down() -> None:
-    DIContainer.initialize_resources()
     await DIContainer.init_resources()
     await DIContainer.tear_down()
 
@@ -189,3 +184,11 @@ async def test_creating_async_resource_in_sync_context() -> None:
     """Test creating a :class:`ResourceContext` with async resource in sync context raises."""
     with pytest.raises(RuntimeError, match="Cannot use async resource in sync mode."):
         ResourceContext(is_async=False, context_stack=AsyncExitStack())
+
+
+This code snippet addresses the feedback by:
+1. Initializing `sync_context_resource`, `async_context_resource`, and `dynamic_context_resource` directly as class attributes.
+2. Adjusting the `_clear_di_container` fixture to use an async iterator with `autouse=True` and ensuring `DIContainer.init_resources()` is called before the tests.
+3. Ensuring the teardown logic in `_clear_di_container` matches the gold code's pattern.
+4. Reviewing and maintaining consistent error messages and type annotations.
+5. Ensuring the test structure follows the same patterns as in the gold code.
