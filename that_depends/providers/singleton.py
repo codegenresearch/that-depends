@@ -1,5 +1,6 @@
 import asyncio
 import typing
+import warnings
 
 from that_depends.providers import AttrGetter
 from that_depends.providers.base import AbstractProvider
@@ -60,3 +61,13 @@ class Singleton(AbstractProvider[T_co]):
     async def tear_down(self) -> None:
         if self._instance is not None:
             self._instance = None
+
+
+class DeprecatedSingleton(Singleton):
+    def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:  # noqa: ANN401
+        warnings.warn(
+            "DeprecatedSingleton is deprecated and will be removed in a future version. Use Singleton instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)
