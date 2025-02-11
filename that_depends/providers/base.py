@@ -19,7 +19,7 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
         super().__init__()
         self._override: typing.Any = None
 
-    def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
+    def __getattr__(self, attr_name: str) -> typing.Any:
         if attr_name.startswith("_"):
             msg = f"'{type(self)}' object has no attribute '{attr_name}'"
             raise AttributeError(msg)
@@ -80,7 +80,7 @@ class ResourceContext(typing.Generic[T_co]):
         :type is_async: bool
         """
         self.instance: T_co | None = None
-        self.resolving_lock: typing.Final = asyncio.Lock()
+        self.resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
         self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
         self.is_async = is_async
 
@@ -141,9 +141,9 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             msg = f"{type(self).__name__} must be generator function"
             raise RuntimeError(msg)
 
-        self._creator: typing.Final = creator
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._creator: typing.Final[typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]] = creator
+        self._args: typing.Final[tuple] = args
+        self._kwargs: typing.Final[dict[str, typing.Any]] = kwargs
 
     def _is_creator_async(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
@@ -180,11 +180,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                         T_co,
                         await context.context_stack.enter_async_context(
                             contextlib.asynccontextmanager(self._creator)(
-                                *[  # type: ignore[arg-type]
+                                *[
                                     await x.async_resolve() if isinstance(x, AbstractProvider) else x
                                     for x in self._args
                                 ],
-                                **{  # type: ignore[arg-type]
+                                **{
                                     k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                     for k, v in self._kwargs.items()
                                 },
@@ -195,11 +195,12 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                     context.context_stack = contextlib.ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
-                            *[  # type: ignore[arg-type]
-                                await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+                            *[
+                                x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                                for x in self._args
                             ],
-                            **{  # type: ignore[arg-type]
-                                k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
+                            **{
+                                k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
                                 for k, v in self._kwargs.items()
                             },
                         ),
@@ -222,11 +223,13 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             context.context_stack = contextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
-                    *[  # type: ignore[arg-type]
-                        x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+                    *[
+                        x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                        for x in self._args
                     ],
-                    **{  # type: ignore[arg-type]
-                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
+                    **{
+                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                        for k, v in self._kwargs.items()
                     },
                 ),
             )
@@ -245,7 +248,7 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
         return self.sync_resolve
 
 
-def _get_value_from_object_by_dotted_path(obj: typing.Any, path: str) -> typing.Any:  # noqa: ANN401
+def _get_value_from_object_by_dotted_path(obj: typing.Any, path: str) -> typing.Any:
     attribute_getter = attrgetter(path)
     return attribute_getter(obj)
 
@@ -267,12 +270,12 @@ class AttrGetter(
         self._attrs.append(attr)
         return self
 
-    async def async_resolve(self) -> typing.Any:  # noqa: ANN401
+    async def async_resolve(self) -> typing.Any:
         resolved_provider_object = await self._provider.async_resolve()
         attribute_path = ".".join(self._attrs)
         return _get_value_from_object_by_dotted_path(resolved_provider_object, attribute_path)
 
-    def sync_resolve(self) -> typing.Any:  # noqa: ANN401
+    def sync_resolve(self) -> typing.Any:
         resolved_provider_object = self._provider.sync_resolve()
         attribute_path = ".".join(self._attrs)
         return _get_value_from_object_by_dotted_path(resolved_provider_object, attribute_path)
