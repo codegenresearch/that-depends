@@ -71,21 +71,49 @@ class ResourceContext(typing.Generic[T_co]):
         :type is_async: bool
         """
         self.instance: T_co | None = None
-        self.resolving_lock: asyncio.Lock = asyncio.Lock()
-        self.context_stack: AsyncExitStack | ExitStack | None = None
+        self.resolving_lock: typing.Final[asyncio.Lock] = asyncio.Lock()
+        self.context_stack: typing.Final[AsyncExitStack | ExitStack | None] = None
         self.is_async = is_async
 
-    def tear_down(self) -> None:
-        """Tear down the context stack."""
+    @staticmethod
+    def is_context_stack_async(
+        context_stack: AsyncExitStack | ExitStack | None,
+    ) -> typing.TypeGuard[AsyncExitStack]:
+        return isinstance(context_stack, AsyncExitStack)
+
+    @staticmethod
+    def is_context_stack_sync(
+        context_stack: AsyncExitStack | ExitStack | None,
+    ) -> typing.TypeGuard[ExitStack]:
+        return isinstance(context_stack, ExitStack)
+
+    async def tear_down(self) -> None:
+        """Async tear down the context stack."""
         if self.context_stack is None:
             return
 
-        if isinstance(self.context_stack, AsyncExitStack):
-            asyncio.create_task(self.context_stack.aclose())
-        elif isinstance(self.context_stack, ExitStack):
+        if self.is_context_stack_async(self.context_stack):
+            await self.context_stack.aclose()
+        elif self.is_context_stack_sync(self.context_stack):
             self.context_stack.close()
         self.context_stack = None
         self.instance = None
+
+    def sync_tear_down(self) -> None:
+        """Sync tear down the context stack.
+
+        :raises RuntimeError: If the context stack is async and the tear down is called in sync mode.
+        """
+        if self.context_stack is None:
+            return
+
+        if self.is_context_stack_sync(self.context_stack):
+            self.context_stack.close()
+            self.context_stack = None
+            self.instance = None
+        elif self.is_context_stack_async(self.context_stack):
+            msg = "Cannot tear down async context in sync mode"
+            raise RuntimeError(msg)
 
 
 class AbstractResource(AbstractProvider[T_co], abc.ABC):
@@ -220,3 +248,13 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
             *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
             **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
         )
+
+
+### Key Changes:
+1. **Imports**: Ensured all necessary imports from `contextlib` are included.
+2. **Type Annotations**: Used `typing.Final` for `resolving_lock` and `context_stack` in `ResourceContext`.
+3. **Static Methods**: Implemented static methods `is_context_stack_async` and `is_context_stack_sync` for type checking.
+4. **Tear Down Methods**: Ensured both `tear_down` and `sync_tear_down` methods handle the context stack correctly.
+5. **Context Management**: Correctly used `contextlib.asynccontextmanager` and `contextlib.contextmanager` based on the creator's type.
+6. **Error Messages**: Ensured error messages are clear and consistent.
+7. **Code Structure**: Maintained a consistent structure and organization throughout the classes.
