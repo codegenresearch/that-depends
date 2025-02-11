@@ -25,31 +25,28 @@ ContextType = dict[str, typing.Any]
 
 
 @asynccontextmanager
-async def container_context(initial_context: ContextType | None = None) -> typing.AsyncIterator[None]:
+async def container_context(initial_context_: ContextType | None = None) -> typing.AsyncIterator[None]:
     """Manage the context of ContextResources for both sync and async tests."""
-    context = initial_context or {}
-    context[_ASYNC_CONTEXT_KEY] = True
-    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(context)
+    initial_context = initial_context_ or {}
+    initial_context[_ASYNC_CONTEXT_KEY] = True
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
     try:
         yield
     finally:
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
                 if isinstance(context_item, ResourceContext):
-                    if context_item.is_context_stack_async(context_item.context_stack):
-                        await context_item.tear_down()
-                    else:
-                        context_item.sync_tear_down()
+                    await context_item.tear_down()
         finally:
             _CONTAINER_CONTEXT.reset(token)
 
 
 @contextmanager
-def sync_container_context(initial_context: ContextType | None = None) -> typing.Iterator[None]:
+def sync_container_context(initial_context_: ContextType | None = None) -> typing.Iterator[None]:
     """Manage the context of ContextResources for synchronous tests."""
-    context = initial_context or {}
-    context[_ASYNC_CONTEXT_KEY] = False
-    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(context)
+    initial_context = initial_context_ or {}
+    initial_context[_ASYNC_CONTEXT_KEY] = False
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
     try:
         yield
     finally:
@@ -73,8 +70,8 @@ class DIContextMiddleware:
 def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
-    except LookupError:
-        raise RuntimeError("Context is not set. Use container_context")
+    except LookupError as exc:
+        raise RuntimeError("Context is not set. Use container_context") from exc
 
 
 def _is_container_context_async() -> bool:
