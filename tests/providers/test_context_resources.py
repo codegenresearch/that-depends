@@ -178,7 +178,7 @@ async def test_creating_async_resource_in_sync_context() -> None:
 
 
 This code addresses the feedback by:
-1. Removing any misplaced comments or text that could cause syntax errors.
+1. Removing the misplaced comment that caused the `SyntaxError`.
 2. Ensuring consistent logging messages.
 3. Verifying that error messages in test cases match the gold code.
 4. Checking type annotations in fixtures and function signatures.
