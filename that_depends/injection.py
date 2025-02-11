@@ -1,9 +1,10 @@
+import asyncio
 import functools
 import inspect
 import typing
 import warnings
 
-from that_depends.providers import AbstractProvider
+from that_depends.providers.base import AbstractProvider
 
 
 P = typing.ParamSpec("P")
@@ -27,22 +28,21 @@ def _inject_to_async(
     @functools.wraps(func)
     async def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
-        for i, (field_name, field_value) in enumerate(signature.parameters.items()):
-            if i < len(args):
+        for field_name, field_value in signature.parameters.items():
+            if field_name in kwargs:
                 continue
 
             if not isinstance(field_value.default, AbstractProvider):
                 continue
 
-            if field_name in kwargs:
-                continue
-
             kwargs[field_name] = await field_value.default.async_resolve()
             injected = True
+
         if not injected:
             warnings.warn(
                 "Expected injection, but nothing found. Remove @inject decorator.", RuntimeWarning, stacklevel=1
             )
+
         return await func(*args, **kwargs)
 
     return inner
@@ -51,17 +51,18 @@ def _inject_to_async(
 def _inject_to_sync(
     func: typing.Callable[P, T],
 ) -> typing.Callable[P, T]:
-    signature: typing.Final = inspect.signature(func)
+    signature = inspect.signature(func)
 
     @functools.wraps(func)
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
         for field_name, field_value in signature.parameters.items():
-            if not isinstance(field_value.default, AbstractProvider):
-                continue
             if field_name in kwargs:
                 msg = f"Injected arguments must not be redefined, {field_name=}"
                 raise RuntimeError(msg)
+
+            if not isinstance(field_value.default, AbstractProvider):
+                continue
 
             kwargs[field_name] = field_value.default.sync_resolve()
             injected = True
