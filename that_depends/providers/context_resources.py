@@ -29,7 +29,7 @@ async def container_context(initial_context_: ContextType | None = None) -> typi
     """Manage the context of ContextResources for both sync and async tests."""
     initial_context = initial_context_ or {}
     initial_context[_ASYNC_CONTEXT_KEY] = True
-    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
+    token = _CONTAINER_CONTEXT.set(initial_context)
     try:
         yield
     finally:
@@ -46,7 +46,7 @@ def sync_container_context(initial_context_: ContextType | None = None) -> typin
     """Manage the context of ContextResources for synchronous tests."""
     initial_context = initial_context_ or {}
     initial_context[_ASYNC_CONTEXT_KEY] = False
-    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
+    token = _CONTAINER_CONTEXT.set(initial_context)
     try:
         yield
     finally:
