@@ -259,7 +259,7 @@ def _get_value_from_object_by_dotted_path(obj: object, dotted_path: str) -> typi
     attrs = dotted_path.split('.')
     value = obj
     for attr in attrs:
-        value = attrgetter(attr)(value)
+        value = getattr(value, attr)
     return value
 
 
