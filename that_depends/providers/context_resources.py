@@ -3,7 +3,7 @@ import logging
 import typing
 import uuid
 import warnings
-from contextlib import AbstractAsyncContextManager, AbstractContextManager, contextmanager, asynccontextmanager
+import contextlib
 from contextvars import ContextVar, Token
 from functools import wraps
 from types import TracebackType
@@ -24,12 +24,12 @@ _ASYNC_CONTEXT_KEY: typing.Final[str] = "__ASYNC_CONTEXT__"
 ContextType = dict[str, typing.Any]
 
 
-@asynccontextmanager
+@contextlib.asynccontextmanager
 async def container_context(initial_context_: ContextType | None = None) -> typing.AsyncIterator[None]:
     """Manage the context of ContextResources for both sync and async tests."""
     initial_context = initial_context_ or {}
     initial_context[_ASYNC_CONTEXT_KEY] = True
-    token = _CONTAINER_CONTEXT.set(initial_context)
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
     try:
         yield
     finally:
@@ -41,12 +41,12 @@ async def container_context(initial_context_: ContextType | None = None) -> typi
             _CONTAINER_CONTEXT.reset(token)
 
 
-@contextmanager
+@contextlib.contextmanager
 def sync_container_context(initial_context_: ContextType | None = None) -> typing.Iterator[None]:
     """Manage the context of ContextResources for synchronous tests."""
     initial_context = initial_context_ or {}
     initial_context[_ASYNC_CONTEXT_KEY] = False
-    token = _CONTAINER_CONTEXT.set(initial_context)
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(initial_context)
     try:
         yield
     finally:
@@ -71,7 +71,8 @@ def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
     except LookupError as exc:
-        raise RuntimeError("Context is not set. Use container_context") from exc
+        error_message = "Context is not set. Use container_context"
+        raise RuntimeError(error_message) from exc
 
 
 def _is_container_context_async() -> bool:
