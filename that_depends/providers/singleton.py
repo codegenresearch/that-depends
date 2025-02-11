@@ -29,17 +29,16 @@ class Singleton(AbstractProvider[T_co]):
         # lock to prevent resolving several times
         async with self._resolving_lock:
             if self._instance is None:
-                # Resolve arguments
-                args = [
-                    await x.async_resolve() if isinstance(x, AbstractProvider) else x
-                    for x in self._args
-                ]  # type: ignore[arg-type]
-                # Resolve keyword arguments
-                kwargs = {
-                    k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
-                    for k, v in self._kwargs.items()
-                }  # type: ignore[arg-type]
-                self._instance = self._factory(*args, **kwargs)
+                self._instance = self._factory(
+                    *[
+                        await x.async_resolve() if isinstance(x, AbstractProvider) else x
+                        for x in self._args
+                    ],  # type: ignore[arg-type]
+                    **{
+                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
+                        for k, v in self._kwargs.items()
+                    },  # type: ignore[arg-type]
+                )
             return self._instance
 
     def sync_resolve(self) -> T_co:
@@ -47,19 +46,21 @@ class Singleton(AbstractProvider[T_co]):
             return typing.cast(T_co, self._override)
 
         if self._instance is None:
-            # Resolve arguments
-            args = [
-                x.sync_resolve() if isinstance(x, AbstractProvider) else x
-                for x in self._args
-            ]  # type: ignore[arg-type]
-            # Resolve keyword arguments
-            kwargs = {
-                k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
-                for k, v in self._kwargs.items()
-            }  # type: ignore[arg-type]
-            self._instance = self._factory(*args, **kwargs)
+            self._instance = self._factory(
+                *[
+                    x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                    for x in self._args
+                ],  # type: ignore[arg-type]
+                **{
+                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                    for k, v in self._kwargs.items()
+                },  # type: ignore[arg-type]
+            )
         return self._instance
 
     async def tear_down(self) -> None:
         if self._instance is not None:
             self._instance = None
+
+
+Based on the feedback, I have combined the list and dictionary comprehensions directly within the factory call in both `async_resolve` and `sync_resolve` methods. The type ignore comments are placed right next to the expressions they are meant to ignore, and the instance assignment is consistent across both methods.
