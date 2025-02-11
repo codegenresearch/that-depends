@@ -11,19 +11,19 @@ class List(AbstractProvider[list[T_co]]):
 
     def __init__(self, *providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._providers = providers
+        self._providers: typing.Final = providers
 
     async def async_resolve(self) -> list[T_co]:
-        return [await provider.async_resolve() for provider in self._providers]
+        return [await x.async_resolve() for x in self._providers]
 
     def sync_resolve(self) -> list[T_co]:
-        return [provider.sync_resolve() for provider in self._providers]
+        return [x.sync_resolve() for x in self._providers]
 
     async def __call__(self) -> list[T_co]:
         return await self.async_resolve()
 
-    def __getattr__(self, item):
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{item}'")
+    def __getattr__(self, item) -> typing.Any:  # noqa: ANN401
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
 
 
 class Dict(AbstractProvider[dict[str, T_co]]):
@@ -31,13 +31,13 @@ class Dict(AbstractProvider[dict[str, T_co]]):
 
     def __init__(self, **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._providers = providers
+        self._providers: typing.Final = providers
 
     async def async_resolve(self) -> dict[str, T_co]:
-        return {key: await provider.async_resolve() for key, provider in self._providers.items()}
+        return {key: await x.async_resolve() for key, x in self._providers.items()}
 
     def sync_resolve(self) -> dict[str, T_co]:
-        return {key: provider.sync_resolve() for key, provider in self._providers.items()}
+        return {key: x.sync_resolve() for key, x in self._providers.items()}
 
-    def __getattr__(self, item):
-        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{item}'")
+    def __getattr__(self, item) -> typing.Any:  # noqa: ANN401
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
