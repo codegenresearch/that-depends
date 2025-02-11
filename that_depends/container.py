@@ -37,7 +37,7 @@ class BaseContainer:
     @classmethod
     def get_providers(cls) -> dict[str, AbstractProvider[typing.Any]]:
         if not hasattr(cls, "providers"):
-            cls.providers = {k: v for k, v in cls.__dict__.items() if isinstance(v, AbstractProvider)}
+            cls.providers = {k: v for k, v in cls.__dict__.items() if isinstance(v, AbstractProvider)}  # type: ignore[attr-defined]
 
         return cls.providers
 
@@ -77,14 +77,14 @@ class BaseContainer:
             v.reset_override()
 
     @classmethod
-    def resolver(cls, item: typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
+    def resolver(cls, item: type[T] | typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
         async def _inner() -> T:
             return await cls.resolve(item)
 
         return _inner
 
     @classmethod
-    async def resolve(cls, object_to_resolve: typing.Callable[..., T]) -> T:
+    async def resolve(cls, object_to_resolve: type[T] | typing.Callable[..., T]) -> T:
         signature: typing.Final = inspect.signature(object_to_resolve)
         kwargs = {}
         providers: typing.Final = cls.get_providers()
@@ -96,7 +96,7 @@ class BaseContainer:
                 msg = f"Provider is not found, {field_name=}"
                 raise RuntimeError(msg)
 
-            kwargs[field_name] = await providers[field_name].async_resolve()
+            kwargs[field_name] = await providers[field_name].async_resolve()  # type: ignore[union-attr]
 
         return object_to_resolve(**kwargs)
 
