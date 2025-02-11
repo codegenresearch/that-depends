@@ -14,7 +14,7 @@ logger: typing.Final = logging.getLogger(__name__)
 T_co = typing.TypeVar("T_co", covariant=True)
 P = typing.ParamSpec("P")
 _CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
-AppType = typing.TypeVar("AppType", covariant=True)
+AppType = typing.TypeVar("AppType")
 Scope = typing.MutableMapping[str, typing.Any]
 Message = typing.MutableMapping[str, typing.Any]
 Receive = typing.Callable[[], typing.Awaitable[Message]]
@@ -66,7 +66,6 @@ class container_context(  # noqa: N801
             for key in reversed(context.keys()):
                 context_item = context[key]
                 if isinstance(context_item, ResourceContext):
-                    # we don't need to handle the case where the ResourceContext is async
                     context_item.sync_tear_down()
 
         finally:
@@ -83,13 +82,11 @@ class container_context(  # noqa: N801
             context = _CONTAINER_CONTEXT.get()
             for key in reversed(context.keys()):
                 context_item = context[key]
-                if not isinstance(context_item, ResourceContext):
-                    continue
-
-                if context_item.is_context_stack_async(context_item.context_stack):
-                    await context_item.tear_down()
-                else:
-                    context_item.sync_tear_down()
+                if isinstance(context_item, ResourceContext):
+                    if context_item.is_context_stack_async(context_item.context_stack):
+                        await context_item.tear_down()
+                    else:
+                        context_item.sync_tear_down()
         finally:
             _CONTAINER_CONTEXT.reset(self._context_token)
 
