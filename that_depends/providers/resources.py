@@ -1,3 +1,4 @@
+import typing
 import warnings
 
 from that_depends.providers.base import AbstractResource, ResourceContext
@@ -16,9 +17,14 @@ class Resource(AbstractResource[T_co]):
         "_context",
     )
 
-    def __init__(self, creator, *args, **kwargs):
+    def __init__(
+        self,
+        creator: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
         super().__init__(creator, *args, **kwargs)
-        self._context = ResourceContext(is_async=self._is_async)
+        self._context: typing.Final[ResourceContext[T_co]] = ResourceContext(is_async=self._is_async)
 
     def _fetch_context(self) -> ResourceContext[T_co]:
         return self._context
@@ -28,6 +34,11 @@ class Resource(AbstractResource[T_co]):
 
 
 class AsyncResource(Resource[T_co]):
-    def __init__(self, creator, *args, **kwargs):
+    def __init__(
+        self,
+        creator: typing.Callable[P, typing.AsyncIterator[T_co]],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> None:
         warnings.warn("AsyncResource is deprecated, use Resource instead", RuntimeWarning, stacklevel=1)
         super().__init__(creator, *args, **kwargs)
