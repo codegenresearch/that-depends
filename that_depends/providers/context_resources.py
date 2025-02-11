@@ -3,7 +3,7 @@ import logging
 import typing
 import uuid
 import warnings
-from contextlib import AbstractAsyncContextManager, AbstractContextManager, asynccontextmanager, contextmanager
+from contextlib import AbstractAsyncContextManager, AbstractContextManager, contextmanager, asynccontextmanager
 from contextvars import ContextVar, Token
 from functools import wraps
 from types import TracebackType
@@ -25,11 +25,11 @@ ContextType = dict[str, typing.Any]
 
 
 @asynccontextmanager
-async def container_context(initial_context_: ContextType | None = None) -> typing.AsyncGenerator[None, None]:
+async def container_context(initial_context: ContextType | None = None) -> typing.AsyncIterator[None]:
     """Manage the context of ContextResources for both sync and async tests."""
-    context = initial_context_ or {}
+    context = initial_context or {}
     context[_ASYNC_CONTEXT_KEY] = True
-    token = _CONTAINER_CONTEXT.set(context)
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(context)
     try:
         yield
     finally:
@@ -45,11 +45,11 @@ async def container_context(initial_context_: ContextType | None = None) -> typi
 
 
 @contextmanager
-def sync_container_context(initial_context_: ContextType | None = None) -> typing.Generator[None, None, None]:
+def sync_container_context(initial_context: ContextType | None = None) -> typing.Iterator[None]:
     """Manage the context of ContextResources for synchronous tests."""
-    context = initial_context_ or {}
+    context = initial_context or {}
     context[_ASYNC_CONTEXT_KEY] = False
-    token = _CONTAINER_CONTEXT.set(context)
+    token: typing.Final[Token[ContextType]] = _CONTAINER_CONTEXT.set(context)
     try:
         yield
     finally:
@@ -73,8 +73,8 @@ class DIContextMiddleware:
 def _get_container_context() -> dict[str, typing.Any]:
     try:
         return _CONTAINER_CONTEXT.get()
-    except LookupError as exc:
-        raise RuntimeError("Context is not set. Use container_context") from exc
+    except LookupError:
+        raise RuntimeError("Context is not set. Use container_context")
 
 
 def _is_container_context_async() -> bool:
