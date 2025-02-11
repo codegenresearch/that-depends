@@ -67,9 +67,9 @@ class ResourceContext(typing.Generic[T_co]):
         context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None,
         instance: T_co | None = None,
     ) -> None:
+        self.context_stack = context_stack or None
         self.instance = instance
         self.resolving_lock: typing.Final = asyncio.Lock()
-        self.context_stack = context_stack or None
         self.is_async = is_async
         if not self.is_async and self.is_context_stack_async(self.context_stack):
             msg = "Cannot use async resource in sync mode."
