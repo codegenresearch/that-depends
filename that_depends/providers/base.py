@@ -8,7 +8,6 @@ from operator import attrgetter
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
-R = typing.TypeVar("R")
 P = typing.ParamSpec("P")
 
 
@@ -17,12 +16,11 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
 
     def __init__(self) -> None:
         super().__init__()
-        self._override: typing.Any = None
+        self._override = None
 
     def __getattr__(self, attr_name: str) -> typing.Any:  # noqa: ANN401
         if attr_name.startswith("_"):
-            msg = f"'{type(self)}' object has no attribute '{attr_name}'"
-            raise AttributeError(msg)
+            raise AttributeError(f"'{type(self)}' object has no attribute '{attr_name}'")
         return AttrGetter(provider=self, attr_name=attr_name)
 
     @abc.abstractmethod
@@ -79,9 +77,9 @@ class ResourceContext(typing.Generic[T_co]):
         For example within a ``async with container_context(): ...`` statement.
         :type is_async: bool
         """
-        self.instance: T_co | None = None
-        self.resolving_lock: typing.Final = asyncio.Lock()
-        self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
+        self.instance = None
+        self.resolving_lock = asyncio.Lock()
+        self.context_stack = None
         self.is_async = is_async
 
     @staticmethod
@@ -121,8 +119,7 @@ class ResourceContext(typing.Generic[T_co]):
             self.context_stack = None
             self.instance = None
         elif self.is_context_stack_async(self.context_stack):
-            msg = "Cannot tear down async context in sync mode"
-            raise RuntimeError(msg)
+            raise RuntimeError("Cannot tear down async context in sync mode")
 
 
 class AbstractResource(AbstractProvider[T_co], abc.ABC):
@@ -138,12 +135,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         elif inspect.isgeneratorfunction(creator):
             self._is_async = False
         else:
-            msg = f"{type(self).__name__} must be generator function"
-            raise RuntimeError(msg)
+            raise RuntimeError(f"{type(self).__name__} must be generator function")
 
-        self._creator: typing.Final = creator
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._creator = creator
+        self._args = args
+        self._kwargs = kwargs
 
     def _is_creator_async(
         self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
@@ -168,8 +164,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if not context.is_async and self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved in an sync context."
-            raise RuntimeError(msg)
+            raise RuntimeError("AsyncResource cannot be resolved in an sync context.")
 
         # lock to prevent race condition while resolving
         async with context.resolving_lock:
@@ -180,11 +175,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                         T_co,
                         await context.context_stack.enter_async_context(
                             contextlib.asynccontextmanager(self._creator)(
-                                *[  # type: ignore[arg-type]
+                                *[
                                     await x.async_resolve() if isinstance(x, AbstractProvider) else x
                                     for x in self._args
                                 ],
-                                **{  # type: ignore[arg-type]
+                                **{
                                     k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                     for k, v in self._kwargs.items()
                                 },
@@ -195,10 +190,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                     context.context_stack = contextlib.ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
-                            *[  # type: ignore[arg-type]
-                                await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+                            *[
+                                await x.async_resolve() if isinstance(x, AbstractProvider) else x
+                                for x in self._args
                             ],
-                            **{  # type: ignore[arg-type]
+                            **{
                                 k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                 for k, v in self._kwargs.items()
                             },
@@ -215,18 +211,19 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             return context.instance
 
         if self._is_creator_async(self._creator):
-            msg = "AsyncResource cannot be resolved synchronously"
-            raise RuntimeError(msg)
+            raise RuntimeError("AsyncResource cannot be resolved synchronously")
 
         if self._is_creator_sync(self._creator):
             context.context_stack = contextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
-                    *[  # type: ignore[arg-type]
-                        x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+                    *[
+                        x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                        for x in self._args
                     ],
-                    **{  # type: ignore[arg-type]
-                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
+                    **{
+                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                        for k, v in self._kwargs.items()
                     },
                 ),
             )
@@ -250,9 +247,7 @@ def _get_value_from_object_by_dotted_path(obj: typing.Any, path: str) -> typing.
     return attribute_getter(obj)
 
 
-class AttrGetter(
-    AbstractProvider[T_co],
-):
+class AttrGetter(AbstractProvider[T_co]):
     __slots__ = "_provider", "_attrs"
 
     def __init__(self, provider: AbstractProvider[T_co], attr_name: str) -> None:
@@ -262,8 +257,7 @@ class AttrGetter(
 
     def __getattr__(self, attr: str) -> "AttrGetter[T_co]":
         if attr.startswith("_"):
-            msg = f"'{type(self)}' object has no attribute '{attr}'"
-            raise AttributeError(msg)
+            raise AttributeError(f"'{type(self)}' object has no attribute '{attr}'")
         self._attrs.append(attr)
         return self
 
