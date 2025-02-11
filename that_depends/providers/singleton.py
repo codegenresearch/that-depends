@@ -31,13 +31,13 @@ class Singleton(AbstractProvider[T_co]):
             if self._instance is None:
                 self._instance = self._factory(
                     *[
-                        await x.async_resolve() if isinstance(x, AbstractProvider) else x
+                        await x.async_resolve() if isinstance(x, AbstractProvider) else x  # type: ignore[arg-type]
                         for x in self._args
-                    ],  # type: ignore[arg-type]
+                    ],
                     **{
-                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
+                        k: await v.async_resolve() if isinstance(v, AbstractProvider) else v  # type: ignore[arg-type]
                         for k, v in self._kwargs.items()
-                    },  # type: ignore[arg-type]
+                    },
                 )
             return self._instance
 
@@ -48,13 +48,13 @@ class Singleton(AbstractProvider[T_co]):
         if self._instance is None:
             self._instance = self._factory(
                 *[
-                    x.sync_resolve() if isinstance(x, AbstractProvider) else x
+                    x.sync_resolve() if isinstance(x, AbstractProvider) else x  # type: ignore[arg-type]
                     for x in self._args
-                ],  # type: ignore[arg-type]
+                ],
                 **{
-                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v
+                    k: v.sync_resolve() if isinstance(v, AbstractProvider) else v  # type: ignore[arg-type]
                     for k, v in self._kwargs.items()
-                },  # type: ignore[arg-type]
+                },
             )
         return self._instance
 
