@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import typing
@@ -5,12 +6,9 @@ import uuid
 from contextlib import AsyncExitStack
 
 import pytest
-
 from that_depends import BaseContainer, fetch_context_item, providers
 from that_depends.providers import container_context
 from that_depends.providers.base import ResourceContext
-from that_depends.providers.context_resources import sync_container_context
-
 
 logger = logging.getLogger(__name__)
 
@@ -28,11 +26,10 @@ async def create_async_context_resource() -> typing.AsyncIterator[str]:
 
 
 class DIContainer(BaseContainer):
-    sync_context_resource = providers.ContextResource(create_sync_context_resource)
     async_context_resource = providers.ContextResource(create_async_context_resource)
     dynamic_context_resource = providers.Selector(
         lambda: fetch_context_item("resource_type") or "sync",
-        sync=sync_context_resource,
+        sync=providers.ContextResource(create_sync_context_resource),
         async_=async_context_resource,
     )
 
@@ -52,7 +49,7 @@ def context_resource(request: pytest.FixtureRequest) -> providers.ContextResourc
 
 @pytest.fixture
 def sync_context_resource() -> providers.ContextResource[str]:
-    return DIContainer.sync_context_resource
+    return providers.ContextResource(create_sync_context_resource)
 
 
 @pytest.fixture
@@ -77,7 +74,7 @@ async def test_context_resource(context_resource: providers.ContextResource[str]
     assert await context_resource() is context_resource_result
 
 
-@sync_container_context()
+@container_context()
 def test_sync_context_resource(sync_context_resource: providers.ContextResource[str]) -> None:
     context_resource_result = sync_context_resource.sync_resolve()
 
@@ -85,10 +82,7 @@ def test_sync_context_resource(sync_context_resource: providers.ContextResource[
 
 
 async def test_async_context_resource_in_sync_context(async_context_resource: providers.ContextResource[str]) -> None:
-    with (
-        pytest.raises(RuntimeError, match="AsyncResource cannot be resolved in an sync context."),
-        sync_container_context(),
-    ):
+    with pytest.raises(RuntimeError, match="AsyncResource cannot be resolved in an sync context"):
         await async_context_resource()
 
 
@@ -153,10 +147,10 @@ async def test_context_resource_with_dynamic_resource() -> None:
 
 
 async def test_early_exit_of_container_context() -> None:
-    with pytest.raises(RuntimeError, match="generator didn't stop"):
+    with pytest.raises(RuntimeError, match="Context is not set, call ``__aenter__`` first"):
         await container_context().__aexit__(None, None, None)
-    with pytest.raises(RuntimeError, match="generator didn't stop"):
-        sync_container_context().__exit__(None, None, None)
+    with pytest.raises(RuntimeError, match="Context is not set, call ``__enter__`` first"):
+        container_context().__exit__(None, None, None)
 
 
 async def test_resource_context_early_teardown() -> None:
