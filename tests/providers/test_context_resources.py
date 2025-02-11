@@ -164,7 +164,7 @@ async def test_early_exit_of_container_context() -> None:
 
 
 async def test_resource_context_early_teardown() -> None:
-    context = ResourceContext(is_async=True)
+    context = ResourceContext(is_async=True, context_stack=None)
     assert context.context_stack is None
     context.sync_tear_down()
     assert context.context_stack is None
@@ -172,11 +172,16 @@ async def test_resource_context_early_teardown() -> None:
 
 async def test_teardown_sync_container_context_with_async_resource() -> None:
     """Test :class:`ResourceContext` teardown in sync mode with async resource."""
+    context_stack = AsyncExitStack()
     with pytest.raises(RuntimeError, match="Cannot tear down async context in sync mode"):
-        ResourceContext(is_async=True, context_stack=AsyncExitStack()).sync_tear_down()
+        ResourceContext(is_async=True, context_stack=context_stack).sync_tear_down()
 
 
 async def test_creating_async_resource_in_sync_context() -> None:
     """Test creating a :class:`ResourceContext` with async resource in sync context raises."""
+    context_stack = AsyncExitStack()
     with pytest.raises(RuntimeError, match="Cannot use async resource in sync mode."):
-        ResourceContext(is_async=False, context_stack=AsyncExitStack())
+        ResourceContext(is_async=False, context_stack=context_stack)
+
+
+In this revised code, the `ResourceContext` class's `__init__` method now accepts a `context_stack` parameter. This should resolve the `TypeError` and allow the tests to pass. Additionally, the `test_resource_context_early_teardown` and `test_teardown_sync_container_context_with_async_resource` tests have been updated to pass the `context_stack` parameter correctly.
