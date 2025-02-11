@@ -28,8 +28,8 @@ def _inject_to_async(
     async def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
         bound_args = signature.bind_partial(*args, **kwargs)
-        for i, (field_name, field_value) in enumerate(signature.parameters.items()):
-            if i < len(bound_args.args):
+        for field_name, field_value in signature.parameters.items():
+            if field_name in bound_args.arguments:
                 continue
 
             if isinstance(field_value.default, AbstractProvider):
@@ -54,8 +54,8 @@ def _inject_to_sync(
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
         injected = False
         bound_args = signature.bind_partial(*args, **kwargs)
-        for i, (field_name, field_value) in enumerate(signature.parameters.items()):
-            if i < len(bound_args.args):
+        for field_name, field_value in signature.parameters.items():
+            if field_name in bound_args.arguments:
                 continue
 
             if isinstance(field_value.default, AbstractProvider):
@@ -75,10 +75,8 @@ def _inject_to_sync(
 
 
 class ClassGetItemMeta(type):
-    def __getitem__(cls, provider: AbstractProvider[T]) -> T:
-        if inspect.iscoroutinefunction(provider.async_resolve):
-            raise RuntimeError("AsyncResource cannot be resolved synchronously.")
-        return typing.cast(T, provider.sync_resolve())
+    def __getitem__(cls, provider: AbstractProvider[T]) -> AbstractProvider[T]:
+        return provider
 
 
 class Provide(metaclass=ClassGetItemMeta):
