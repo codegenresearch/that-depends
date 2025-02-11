@@ -11,25 +11,25 @@ class Selector(AbstractProvider[T_co]):
 
     def __init__(self, selector: typing.Callable[[], str], **providers: AbstractProvider[T_co]) -> None:
         super().__init__()
-        self._selector: typing.Final = selector
-        self._providers: typing.Final = providers
-        self._override = None
+        self._selector: typing.Final[typing.Callable[[], str]] = selector
+        self._providers: typing.Final[dict[str, AbstractProvider[T_co]]] = providers
+        self._override: typing.Optional[T_co] = None
 
     async def async_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
+        if self._override is not None:
+            return self._override
 
-        selected_key: typing.Final = self._selector()
+        selected_key: str = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
         return await self._providers[selected_key].async_resolve()
 
     def sync_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
+        if self._override is not None:
+            return self._override
 
-        selected_key: typing.Final = self._selector()
+        selected_key: str = self._selector()
         if selected_key not in self._providers:
             msg = f"No provider matches {selected_key}"
             raise RuntimeError(msg)
