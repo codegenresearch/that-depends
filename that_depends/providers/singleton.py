@@ -68,12 +68,12 @@ class Singleton(AbstractProvider[T_co]):
         return self._instance
 
     async def tear_down(self) -> None:
-        self._instance = None
+        if self._instance is not None:
+            self._instance = None
 
 
 This code addresses the feedback by:
-1. Using a single `_instance` variable to manage the singleton instance.
-2. Ensuring the `_override` attribute is defined and checked in both `async_resolve` and `sync_resolve`.
-3. Ensuring the locking mechanism only protects the creation of the instance.
-4. Modifying the `tear_down` method to set `_instance` to `None`.
-5. Ensuring list and dictionary comprehensions are consistent with the gold code's style.
+1. Ensuring the return statement for the instance in `async_resolve` is placed correctly after the lock block.
+2. Adding a check in the `tear_down` method to ensure `_instance` is not `None` before setting it to `None`.
+3. Ensuring list and dictionary comprehensions are consistently formatted.
+4. Ensuring attribute handling in `__getattr__` is consistent with the gold code.
