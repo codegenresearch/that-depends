@@ -5,8 +5,8 @@ from that_depends.providers import container_context, fetch_context_item, sync_c
 
 __all__ = [
     "container_context",
-    "fetch_context_item",
     "sync_container_context",
+    "fetch_context_item",
     "providers",
     "BaseContainer",
     "inject",
