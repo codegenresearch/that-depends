@@ -4,6 +4,7 @@ import contextlib
 import inspect
 import typing
 from contextlib import contextmanager
+from operator import attrgetter
 
 
 T_co = typing.TypeVar("T_co", covariant=True)
@@ -60,6 +61,12 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
                 b_factory2 = Factory(create_b, a_factory.cast)  # works and passes type checking
         """
         return typing.cast(T_co, self)
+
+    def __getattr__(self, item: str) -> typing.Any:
+        """Dynamic attribute access."""
+        if self._override is not None:
+            return attrgetter(item)(self._override)
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
 
 
 class ResourceContext(typing.Generic[T_co]):
@@ -224,3 +231,23 @@ class AbstractFactory(AbstractProvider[T_co], abc.ABC):
     @property
     def sync_provider(self) -> typing.Callable[[], T_co]:
         return self.sync_resolve
+
+
+class AttrGetter(AbstractProvider[T_co]):
+    """Provider that resolves an attribute from another provider."""
+
+    def __init__(self, provider: AbstractProvider[object], attr_name: str) -> None:
+        super().__init__()
+        self._provider = provider
+        self._attr_name = attr_name
+
+    async def async_resolve(self) -> T_co:
+        resolved = await self._provider.async_resolve()
+        return attrgetter(self._attr_name)(resolved)
+
+    def sync_resolve(self) -> T_co:
+        resolved = self._provider.sync_resolve()
+        return attrgetter(self._attr_name)(resolved)
+
+
+This code includes the `AttrGetter` class as suggested by the feedback, which extends `AbstractProvider` and resolves attributes dynamically. It also includes a `__getattr__` method in `AbstractProvider` for dynamic attribute access and uses `attrgetter` from the `operator` module for attribute resolution. Error messages are kept clear and consistent.
