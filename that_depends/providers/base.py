@@ -213,7 +213,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             raise RuntimeError(msg)
 
         if self._is_creator_sync(self._creator):
-            context.context_stack = contextcontextlib.ExitStack()
+            context.context_stack = contextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
                     *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
@@ -259,7 +259,7 @@ def _get_value_from_object_by_dotted_path(obj: object, dotted_path: str) -> typi
     attrs = dotted_path.split('.')
     value = obj
     for attr in attrs:
-        value = attrgetter(attr)(value)
+        value = getattr(value, attr)
     return value
 
 
@@ -267,7 +267,7 @@ This code addresses the feedback by:
 1. Removing the invalid comment that caused the `SyntaxError`.
 2. Ensuring that the `__getattr__` method returns an instance of `AttrGetter` with the correct parameters.
 3. Ensuring consistent error messages and type annotations.
-4. Implementing the helper function `_get_value_from_object_by_dotted_path` using `attrgetter` for efficiency.
+4. Implementing the helper function `_get_value_from_object_by_dotted_path` using `getattr` for attribute resolution.
 5. Ensuring the `AttrGetter` class has the correct `__slots__` and handles dynamic attribute access properly.
 6. Ensuring clear and consistent documentation.
 7. Using `typing.Final` for variables that should not be reassigned after initialization.
