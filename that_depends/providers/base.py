@@ -1,15 +1,12 @@
 import abc
 import asyncio
-import contextlib
 import inspect
 import typing
-from contextlib import contextmanager
-import warnings
+from contextlib import contextmanager, AsyncExitStack, ExitStack
 
-T = typing.TypeVar("T")
-R = typing.TypeVar("R")
-P = typing.ParamSpec("P")
+
 T_co = typing.TypeVar("T_co", covariant=True)
+P = typing.ParamSpec("P")
 
 
 class AbstractProvider(typing.Generic[T_co], abc.ABC):
@@ -18,7 +15,6 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
     def __init__(self) -> None:
         super().__init__()
         self._override: typing.Any = None
-        self._providers: typing.Dict[str, 'AbstractProvider'] = {}
 
     @abc.abstractmethod
     async def async_resolve(self) -> T_co:
@@ -63,12 +59,6 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
         """
         return typing.cast(T_co, self)
 
-    def register_provider(self, name: str, provider: 'AbstractProvider') -> None:
-        self._providers[name] = provider
-
-    def get_provider(self, name: str) -> 'AbstractProvider':
-        return self._providers[name]
-
 
 class ResourceContext(typing.Generic[T_co]):
     __slots__ = "context_stack", "instance", "resolving_lock", "is_async"
@@ -81,49 +71,21 @@ class ResourceContext(typing.Generic[T_co]):
         :type is_async: bool
         """
         self.instance: T_co | None = None
-        self.resolving_lock: typing.Final = asyncio.Lock()
-        self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
+        self.resolving_lock: asyncio.Lock = asyncio.Lock()
+        self.context_stack: AsyncExitStack | ExitStack | None = None
         self.is_async = is_async
 
-    @staticmethod
-    def is_context_stack_async(
-        context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None,
-    ) -> typing.TypeGuard[contextlib.AsyncExitStack]:
-        return isinstance(context_stack, contextlib.AsyncExitStack)
-
-    @staticmethod
-    def is_context_stack_sync(
-        context_stack: contextlib.AsyncExitStack | contextlib.ExitStack,
-    ) -> typing.TypeGuard[contextlib.ExitStack]:
-        return isinstance(context_stack, contextlib.ExitStack)
-
-    async def tear_down(self) -> None:
-        """Async tear down the context stack."""
+    def tear_down(self) -> None:
+        """Tear down the context stack."""
         if self.context_stack is None:
             return
 
-        if self.is_context_stack_async(self.context_stack):
-            await self.context_stack.aclose()
-        elif self.is_context_stack_sync(self.context_stack):
+        if isinstance(self.context_stack, AsyncExitStack):
+            asyncio.create_task(self.context_stack.aclose())
+        elif isinstance(self.context_stack, ExitStack):
             self.context_stack.close()
         self.context_stack = None
         self.instance = None
-
-    def sync_tear_down(self) -> None:
-        """Sync tear down the context stack.
-
-        :raises RuntimeError: If the context stack is async and the tear down is called in sync mode.
-        """
-        if self.context_stack is None:
-            return
-
-        if self.is_context_stack_sync(self.context_stack):
-            self.context_stack.close()
-            self.context_stack = None
-            self.instance = None
-        elif self.is_context_stack_async(self.context_stack):
-            msg = "Cannot tear down async context in sync mode"
-            raise RuntimeError(msg)
 
 
 class AbstractResource(AbstractProvider[T_co], abc.ABC):
@@ -177,7 +139,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         async with context.resolving_lock:
             if context.instance is None:
                 if self._is_creator_async(self._creator):
-                    context.context_stack = contextlib.AsyncExitStack()
+                    context.context_stack = AsyncExitStack()
                     context.instance = typing.cast(
                         T_co,
                         await context.context_stack.enter_async_context(
@@ -191,7 +153,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                         ),
                     )
                 elif self._is_creator_sync(self._creator):
-                    context.context_stack = contextlib.ExitStack()
+                    context.context_stack = ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
                             *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
@@ -213,7 +175,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             raise RuntimeError(msg)
 
         if self._is_creator_sync(self._creator):
-            context.context_stack = contextlib.ExitStack()
+            context.context_stack = ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
                     *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
