@@ -24,27 +24,25 @@ class BaseContainer:
 
     @classmethod
     def connect_containers(cls, *containers: type["BaseContainer"]) -> None:
-        """Connect containers.
-
-        When `init_resources` and `tear_down` is called,
-        same method of connected containers will also be called.
-        """
+        """Connect containers.\n\n        When `init_resources` and `tear_down` is called,\n        same method of connected containers will also be called.\n        """
         if not hasattr(cls, "containers"):
-            cls.containers = []
+            cls.containers: list[type["BaseContainer"]] = []
 
         cls.containers.extend(containers)
 
     @classmethod
     def get_providers(cls) -> dict[str, AbstractProvider[typing.Any]]:
         if not hasattr(cls, "providers"):
-            cls.providers = {k: v for k, v in cls.__dict__.items() if isinstance(v, AbstractProvider)}
+            cls.providers: dict[str, AbstractProvider[typing.Any]] = {
+                k: v for k, v in cls.__dict__.items() if isinstance(v, AbstractProvider)
+            }
 
         return cls.providers
 
     @classmethod
     def get_containers(cls) -> list[type["BaseContainer"]]:
         if not hasattr(cls, "containers"):
-            cls.containers = []
+            cls.containers: list[type["BaseContainer"]] = []
 
         return cls.containers
 
@@ -74,20 +72,21 @@ class BaseContainer:
     @classmethod
     def reset_override(cls) -> None:
         for v in cls.get_providers().values():
-            v.reset_override()
+            if hasattr(v, "reset_override"):
+                v.reset_override()
 
     @classmethod
-    def resolver(cls, item: typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
+    def resolver(cls, item: type[T] | typing.Callable[P, T]) -> typing.Callable[[], typing.Awaitable[T]]:
         async def _inner() -> T:
             return await cls.resolve(item)
 
         return _inner
 
     @classmethod
-    async def resolve(cls, object_to_resolve: typing.Callable[..., T]) -> T:
-        signature: typing.Final = inspect.signature(object_to_resolve)
-        kwargs = {}
-        providers: typing.Final = cls.get_providers()
+    async def resolve(cls, object_to_resolve: type[T] | typing.Callable[..., T]) -> T:
+        signature: typing.Final[inspect.Signature] = inspect.signature(object_to_resolve)
+        kwargs: dict[str, typing.Any] = {}
+        providers: typing.Final[dict[str, AbstractProvider[typing.Any]]] = cls.get_providers()
         for field_name, field_value in signature.parameters.items():
             if field_value.default is not inspect.Parameter.empty or field_name in ("_", "__"):
                 continue
@@ -103,9 +102,9 @@ class BaseContainer:
     @classmethod
     @contextmanager
     def override_providers(cls, providers_for_overriding: dict[str, typing.Any]) -> typing.Iterator[None]:
-        current_providers: typing.Final = cls.get_providers()
-        current_provider_names: typing.Final = set(current_providers.keys())
-        given_provider_names: typing.Final = set(providers_for_overriding.keys())
+        current_providers: typing.Final[dict[str, AbstractProvider[typing.Any]]] = cls.get_providers()
+        current_provider_names: typing.Final[set[str]] = set(current_providers.keys())
+        given_provider_names: typing.Final[set[str]] = set(providers_for_overriding.keys())
 
         for given_name in given_provider_names:
             if given_name not in current_provider_names:
@@ -114,11 +113,13 @@ class BaseContainer:
 
         for provider_name, mock in providers_for_overriding.items():
             provider = current_providers[provider_name]
-            provider.override(mock)
+            if hasattr(provider, "override"):
+                provider.override(mock)
 
         try:
             yield
         finally:
             for provider_name in providers_for_overriding:
                 provider = current_providers[provider_name]
-                provider.reset_override()
+                if hasattr(provider, "reset_override"):
+                    provider.reset_override()
