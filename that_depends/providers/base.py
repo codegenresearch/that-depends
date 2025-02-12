@@ -52,20 +52,7 @@ class AbstractProvider(typing.Generic[T_co], abc.ABC):
 
     @property
     def cast(self) -> T_co:
-        """Returns self, but cast to the type of the provided value.
-
-        This helps to pass providers as input to other providers while avoiding type checking errors:
-        :example:
-
-            class A: ...
-
-            def create_b(a: A) -> B: ...
-
-            class Container(BaseContainer):
-                a_factory = Factory(A)
-                b_factory1 = Factory(create_b, a_factory)  # works, but mypy (or pyright, etc.) will complain
-                b_factory2 = Factory(create_b, a_factory.cast)  # works and passes type checking
-        """
+        """Returns self, but cast to the type of the provided value.\n\n        This helps to pass providers as input to other providers while avoiding type checking errors:\n        :example:\n\n            class A: ...\n\n            def create_b(a: A) -> B: ...\n\n            class Container(BaseContainer):\n                a_factory = Factory(A)\n                b_factory1 = Factory(create_b, a_factory)  # works, but mypy (or pyright, etc.) will complain\n                b_factory2 = Factory(create_b, a_factory.cast)  # works and passes type checking\n        """
         return typing.cast(T_co, self)
 
 
@@ -73,12 +60,7 @@ class ResourceContext(typing.Generic[T_co]):
     __slots__ = "context_stack", "instance", "resolving_lock", "is_async"
 
     def __init__(self, is_async: bool) -> None:
-        """Create a new ResourceContext instance.
-
-        :param is_async: Whether the ResourceContext was created in an async context.
-        For example within a ``async with container_context(): ...`` statement.
-        :type is_async: bool
-        """
+        """Create a new ResourceContext instance.\n\n        :param is_async: Whether the ResourceContext was created in an async context.\n        For example within a ``async with container_context(): ...`` statement.\n        :type is_async: bool\n        """
         self.instance: T_co | None = None
         self.resolving_lock: typing.Final = asyncio.Lock()
         self.context_stack: contextlib.AsyncExitStack | contextlib.ExitStack | None = None
@@ -109,10 +91,7 @@ class ResourceContext(typing.Generic[T_co]):
         self.instance = None
 
     def sync_tear_down(self) -> None:
-        """Sync tear down the context stack.
-
-        :raises RuntimeError: If the context stack is async and the tear down is called in sync mode.
-        """
+        """Sync tear down the context stack.\n\n        :raises RuntimeError: If the context stack is async and the tear down is called in sync mode.\n        """
         if self.context_stack is None:
             return
 
@@ -180,11 +159,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                         T_co,
                         await context.context_stack.enter_async_context(
                             contextlib.asynccontextmanager(self._creator)(
-                                *[  # type: ignore[arg-type]
+                                *[
                                     await x.async_resolve() if isinstance(x, AbstractProvider) else x
                                     for x in self._args
                                 ],
-                                **{  # type: ignore[arg-type]
+                                **{
                                     k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                     for k, v in self._kwargs.items()
                                 },
@@ -195,10 +174,8 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                     context.context_stack = contextlib.ExitStack()
                     context.instance = context.context_stack.enter_context(
                         contextlib.contextmanager(self._creator)(
-                            *[  # type: ignore[arg-type]
-                                await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-                            ],
-                            **{  # type: ignore[arg-type]
+                            *[await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+                            **{
                                 k: await v.async_resolve() if isinstance(v, AbstractProvider) else v
                                 for k, v in self._kwargs.items()
                             },
@@ -222,12 +199,8 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
             context.context_stack = contextlib.ExitStack()
             context.instance = context.context_stack.enter_context(
                 contextlib.contextmanager(self._creator)(
-                    *[  # type: ignore[arg-type]
-                        x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-                    ],
-                    **{  # type: ignore[arg-type]
-                        k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
-                    },
+                    *[x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args],
+                    **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
                 ),
             )
         return typing.cast(T_co, context.instance)
