@@ -66,4 +66,41 @@ class DIContainer(BaseContainer):
         async_resource=async_resource.cast,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
-    object = providers.Object(object())
+
+    def resolve_with_override(self, provider: providers.Provider, override: typing.Any = None) -> typing.Any:
+        if override is not None:
+            return override
+        return provider.sync_resolve()
+
+    async def async_resolve_with_override(self, provider: providers.Provider, override: typing.Any = None) -> typing.Any:
+        if override is not None:
+            return override
+        return await provider()
+
+    def get_object_provider_value(self, provider: providers.Provider) -> typing.Any:
+        value = self.resolve_with_override(provider)
+        assert isinstance(value, object), f"Expected an object, got {type(value)}"
+        return value
+
+    async def async_get_object_provider_value(self, provider: providers.Provider) -> typing.Any:
+        value = await self.async_resolve_with_override(provider)
+        assert isinstance(value, object), f"Expected an object, got {type(value)}"
+        return value
+
+    def get_sync_resource(self, override: typing.Any = None) -> datetime.datetime:
+        return self.resolve_with_override(self.sync_resource, override)
+
+    async def get_async_resource(self, override: typing.Any = None) -> datetime.datetime:
+        return await self.async_resolve_with_override(self.async_resource, override)
+
+    def get_simple_factory(self, override: typing.Any = None) -> SimpleFactory:
+        return self.resolve_with_override(self.simple_factory, override)
+
+    async def get_async_factory(self, override: typing.Any = None) -> datetime.datetime:
+        return await self.async_resolve_with_override(self.async_factory, override)
+
+    def get_dependent_factory(self, override: typing.Any = None) -> DependentFactory:
+        return self.resolve_with_override(self.dependent_factory, override)
+
+    def get_singleton(self, override: typing.Any = None) -> SingletonFactory:
+        return self.resolve_with_override(self.singleton, override)
