@@ -8,7 +8,7 @@ from contextvars import ContextVar, Token
 from functools import wraps
 from types import TracebackType
 
-from that_depends.providers.base import AbstractResource, ResourceContext
+from that_depends.providers.base import AbstractResource
 
 
 logger: typing.Final = logging.getLogger(__name__)
@@ -29,13 +29,7 @@ ContextType = dict[str, typing.Any]
 class container_context(  # noqa: N801
     AbstractAsyncContextManager[ContextType], AbstractContextManager[ContextType]
 ):
-    """Manage the context of ContextResources.
-
-    Can be entered using ``async with container_context()`` or with ``with container_context()``
-    as async-context-manager or context-manager respectively.
-    When used as async-context-manager, it will allow setup & teardown of both sync and async resources.
-    When used as sync-context-manager, it will only allow setup & teardown of sync resources.
-    """
+    """Manage the context of ContextResources.\n\n    Can be entered using ``async with container_context()`` or with ``with container_context()``\n    as a async-context-manager or context-manager respectively.\n    When used as an async-context-manager, it will allow setup & teardown of both sync and async resources.\n    When used as an sync-context-manager, it will only allow setup & teardown of sync resources.\n    """
 
     def __init__(self, initial_context: ContextType | None = None) -> None:
         self._initial_context: ContextType = initial_context or {}
@@ -59,13 +53,10 @@ class container_context(  # noqa: N801
         if self._context_token is None:
             msg = "Context is not set, call ``__enter__`` first"
             raise RuntimeError(msg)
-
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
                 if isinstance(context_item, ResourceContext):
-                    # we don't need to handle the case where the ResourceContext is async
                     context_item.sync_tear_down()
-
         finally:
             _CONTAINER_CONTEXT.reset(self._context_token)
 
@@ -75,16 +66,13 @@ class container_context(  # noqa: N801
         if self._context_token is None:
             msg = "Context is not set, call ``__aenter__`` first"
             raise RuntimeError(msg)
-
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
-                if not isinstance(context_item, ResourceContext):
-                    continue
-
-                if context_item.is_context_stack_async(context_item.context_stack):
-                    await context_item.tear_down()
-                else:
-                    context_item.sync_tear_down()
+                if isinstance(context_item, ResourceContext):
+                    if context_item.is_async:
+                        await context_item.tear_down()
+                    else:
+                        context_item.sync_tear_down()
         finally:
             _CONTAINER_CONTEXT.reset(self._context_token)
 
@@ -92,16 +80,16 @@ class container_context(  # noqa: N801
         if inspect.iscoroutinefunction(func):
 
             @wraps(func)
-            async def _async_inner(*args: P.args, **kwargs: P.kwargs) -> T:
+            async def _async_inner(*args: P.args, **kwds: P.kwargs) -> T:
                 async with self:
-                    return await func(*args, **kwargs)  # type: ignore[no-any-return]
+                    return await func(*args, **kwds)  # type: ignore[no-any-return]
 
             return typing.cast(typing.Callable[P, T], _async_inner)
 
         @wraps(func)
-        def _sync_inner(*args: P.args, **kwargs: P.kwargs) -> T:
+        def _sync_inner(*args: P.args, **kwds: P.kwargs) -> T:
             with self:
-                return func(*args, **kwargs)
+                return func(*args, **kwds)
 
         return _sync_inner
 
@@ -124,16 +112,45 @@ def _get_container_context() -> dict[str, typing.Any]:
 
 
 def _is_container_context_async() -> bool:
-    """Check if the current container context is async.
-
-    :return: Whether the current container context is async.
-    :rtype: bool
-    """
+    """Check if the current container context is async.\n\n    :return: Whether the current container context is async.\n    :rtype: bool\n    """
     return typing.cast(bool, _get_container_context().get(_ASYNC_CONTEXT_KEY, False))
 
 
 def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401
     return _get_container_context().get(key, default)
+
+
+class ResourceContext(typing.Generic[T]):
+    __slots__ = ("is_async", "context_stack", "teared_down")
+
+    def __init__(self, is_async: bool) -> None:
+        self.is_async: bool = is_async
+        self.context_stack: list[T] = []
+        self.teared_down: bool = False
+
+    async def tear_down(self) -> None:
+        if self.teared_down:
+            raise RuntimeError("Tear down has already been called.")
+        while self.context_stack:
+            item = self.context_stack.pop()
+            if self.is_async:
+                await item.__aexit__(None, None, None)
+            else:
+                item.__exit__(None, None, None)
+        self.teared_down = True
+
+    def sync_tear_down(self) -> None:
+        if self.teared_down:
+            raise RuntimeError("Tear down has already been called.")
+        while self.context_stack:
+            item = self.context_stack.pop()
+            item.__exit__(None, None, None)
+        self.teared_down = True
+
+    def add(self, item: T) -> None:
+        if self.teared_down:
+            raise RuntimeError("Cannot add to a torn down context.")
+        self.context_stack.append(item)
 
 
 class ContextResource(AbstractResource[T]):
@@ -160,7 +177,8 @@ class ContextResource(AbstractResource[T]):
         if resource_context := container_context.get(self._internal_name):
             return typing.cast(ResourceContext[T], resource_context)
 
-        resource_context = ResourceContext(is_async=_is_container_context_async())
+        is_async = _is_container_context_async()
+        resource_context = ResourceContext(is_async=is_async)
         container_context[self._internal_name] = resource_context
         return resource_context
 
