@@ -12,35 +12,34 @@ class Factory(AbstractFactory[T_co]):
 
     def __init__(self, factory: typing.Callable[P, T_co], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._factory: typing.Final[typing.Callable[P, T_co]] = factory
+        self._args: typing.Final[tuple] = args
+        self._kwargs: typing.Final[dict[str, typing.Any]] = kwargs
+        self._override: T_co | None = None
 
     async def async_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
+        if self._override is not None:
+            return self._override
 
-        return self._factory(
-            *[  # type: ignore[arg-type]
-                await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-            ],
-            **{  # type: ignore[arg-type]
-                k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
-            },
-        )
+        resolved_args = [
+            await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+        ]
+        resolved_kwargs = {
+            k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
+        }
+        return self._factory(*resolved_args, **resolved_kwargs)
 
     def sync_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
+        if self._override is not None:
+            return self._override
 
-        return self._factory(
-            *[  # type: ignore[arg-type]
-                x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-            ],
-            **{  # type: ignore[arg-type]
-                k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
-            },
-        )
+        resolved_args = [
+            x.sync_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+        ]
+        resolved_kwargs = {
+            k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
+        }
+        return self._factory(*resolved_args, **resolved_kwargs)
 
 
 class AsyncFactory(AbstractFactory[T_co]):
@@ -48,23 +47,22 @@ class AsyncFactory(AbstractFactory[T_co]):
 
     def __init__(self, factory: typing.Callable[P, typing.Awaitable[T_co]], *args: P.args, **kwargs: P.kwargs) -> None:
         super().__init__()
-        self._factory: typing.Final = factory
-        self._args: typing.Final = args
-        self._kwargs: typing.Final = kwargs
+        self._factory: typing.Final[typing.Callable[P, typing.Awaitable[T_co]]] = factory
+        self._args: typing.Final[tuple] = args
+        self._kwargs: typing.Final[dict[str, typing.Any]] = kwargs
+        self._override: T_co | None = None
 
     async def async_resolve(self) -> T_co:
-        if self._override:
-            return typing.cast(T_co, self._override)
+        if self._override is not None:
+            return self._override
 
-        return await self._factory(
-            *[  # type: ignore[arg-type]
-                await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
-            ],
-            **{  # type: ignore[arg-type]
-                k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
-            },
-        )
+        resolved_args = [
+            await x.async_resolve() if isinstance(x, AbstractProvider) else x for x in self._args
+        ]
+        resolved_kwargs = {
+            k: await v.async_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()
+        }
+        return await self._factory(*resolved_args, **resolved_kwargs)
 
     def sync_resolve(self) -> typing.NoReturn:
-        msg = "AsyncFactory cannot be resolved synchronously"
-        raise RuntimeError(msg)
+        raise RuntimeError("AsyncFactory cannot be resolved synchronously")
