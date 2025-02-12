@@ -37,7 +37,7 @@ def _inject_to_async(
             if field_name in kwargs:
                 continue
 
-            kwargs[field_name] = await field_value.default.async_resolve()
+            kwargs[field_name] = await field_value.default()
             injected = True
         if not injected:
             warnings.warn(
