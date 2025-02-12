@@ -61,9 +61,26 @@ class DIContainer(BaseContainer):
     async_factory = providers.AsyncFactory(async_factory, async_resource.cast)
     dependent_factory = providers.Factory(
         DependentFactory,
-        simple_factory=simple_factory.cast,
-        sync_resource=sync_resource.cast,
-        async_resource=async_resource.cast,
+        simple_factory=simple_factory.provider,
+        sync_resource=sync_resource.provider,
+        async_resource=async_resource.provider,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
-    object = providers.Object(object())
+
+    free_factory = providers.Factory(FreeFactory, dependent_factory=dependent_factory.provider, sync_resource=sync_resource.provider)
+    object_provider = providers.Object("example_object")
+
+    def override_providers(self):
+        self.sync_resource = providers.Resource(create_sync_resource)
+        self.async_resource = providers.Resource(create_async_resource)
+        self.simple_factory = providers.Factory(SimpleFactory, dep1="new_text", dep2=456)
+        self.async_factory = providers.AsyncFactory(async_factory, async_resource.provider)
+        self.dependent_factory = providers.Factory(
+            DependentFactory,
+            simple_factory=self.simple_factory.provider,
+            sync_resource=self.sync_resource.provider,
+            async_resource=self.async_resource.provider,
+        )
+        self.singleton = providers.Singleton(SingletonFactory, dep1=False)
+        self.free_factory = providers.Factory(FreeFactory, dependent_factory=self.dependent_factory.provider, sync_resource=self.sync_resource.provider)
+        self.object_provider = providers.Object("new_example_object")
