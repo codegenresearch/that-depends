@@ -27,13 +27,25 @@ async def create_async_context_resource() -> typing.AsyncIterator[str]:
 
 
 class DIContainer(BaseContainer):
-    sync_context_resource = providers.ContextResource(create_sync_context_resource)
-    async_context_resource = providers.ContextResource(create_async_context_resource)
-    dynamic_context_resource = providers.Selector(
-        lambda: fetch_context_item("resource_type") or "sync",
-        sync=sync_context_resource,
-        async_=async_context_resource,
-    )
+    def __init__(self):
+        super().__init__()
+        self.sync_context_resource = providers.ContextResource(create_sync_context_resource)
+        self.async_context_resource = providers.ContextResource(create_async_context_resource)
+        self.dynamic_context_resource = providers.Selector(
+            lambda: fetch_context_item("resource_type") or "sync",
+            sync=self.sync_context_resource,
+            async_=self.async_context_resource,
+        )
+
+    @staticmethod
+    def is_async_function(func: typing.Callable) -> bool:
+        return isinstance(func, typing.AsyncGeneratorType) or isinstance(func, typing.AsyncFunctionType)
+
+    async def tear_down(self) -> None:
+        if self.is_async_function(self.sync_context_resource):
+            await self.sync_context_resource.tear_down()
+        if self.is_async_function(self.async_context_resource):
+            await self.async_context_resource.tear_down()
 
 
 @pytest.fixture(autouse=True)
@@ -41,22 +53,22 @@ async def _clear_di_container() -> typing.AsyncIterator[None]:
     try:
         yield
     finally:
-        await DIContainer.tear_down()
+        await DIContainer().tear_down()
 
 
-@pytest.fixture(params=[DIContainer.sync_context_resource, DIContainer.async_context_resource])
+@pytest.fixture(params=[DIContainer().sync_context_resource, DIContainer().async_context_resource])
 def context_resource(request: pytest.FixtureRequest) -> providers.ContextResource[str]:
     return typing.cast(providers.ContextResource[str], request.param)
 
 
 @pytest.fixture
 def sync_context_resource() -> providers.ContextResource[str]:
-    return DIContainer.sync_context_resource
+    return DIContainer().sync_context_resource
 
 
 @pytest.fixture
 def async_context_resource() -> providers.ContextResource[str]:
-    return DIContainer.async_context_resource
+    return DIContainer().async_context_resource
 
 
 async def test_context_resource_without_context_init(
@@ -128,8 +140,8 @@ async def test_context_resources_overriding(context_resource: providers.ContextR
 
 
 async def test_context_resources_init_and_tear_down() -> None:
-    await DIContainer.init_resources()
-    await DIContainer.tear_down()
+    await DIContainer().init_resources()
+    await DIContainer().tear_down()
 
 
 def test_context_resources_wrong_providers_init() -> None:
@@ -139,13 +151,13 @@ def test_context_resources_wrong_providers_init() -> None:
 
 async def test_context_resource_with_dynamic_resource() -> None:
     async with container_context({"resource_type": "sync"}):
-        assert (await DIContainer.dynamic_context_resource()).startswith("sync")
+        assert (await DIContainer().dynamic_context_resource()).startswith("sync")
 
     async with container_context({"resource_type": "async_"}):
-        assert (await DIContainer.dynamic_context_resource()).startswith("async")
+        assert (await DIContainer().dynamic_context_resource()).startswith("async")
 
     async with container_context():
-        assert (await DIContainer.dynamic_context_resource()).startswith("sync")
+        assert (await DIContainer().dynamic_context_resource()).startswith("sync")
 
 
 async def test_early_exit_of_container_context() -> None:
@@ -163,7 +175,12 @@ async def test_resource_context_early_teardown() -> None:
 
 
 async def test_teardown_sync_container_context_with_async_resource() -> None:
-    resource_context: ResourceContext[typing.Any] = ResourceContext(is_async=True)
-    resource_context.context_stack = AsyncExitStack()
+    """Test :class:`ResourceContext` teardown in sync mode with async resource."""
     with pytest.raises(RuntimeError, match="Cannot tear down async context in sync mode"):
-        resource_context.sync_tear_down()
+        ResourceContext(is_async=True, context_stack=AsyncExitStack()).sync_tear_down()
+
+
+async def test_creating_async_resource_in_sync_context() -> None:
+    """Test creating a :class:`ResourceContext` with async resource in sync context raises."""
+    with pytest.raises(RuntimeError, match="Cannot use async resource in sync mode."):
+        ResourceContext(is_async=False, context_stack=AsyncExitStack())
