@@ -3,19 +3,19 @@ import typing
 from that_depends.providers.base import AbstractProvider
 
 
-T_co = typing.TypeVar("T_co", covariant=True)
+T = typing.TypeVar("T")
 P = typing.ParamSpec("P")
 
 
-class Object(AbstractProvider[T_co]):
+class Object(AbstractProvider[T]):
     __slots__ = ("_obj",)
 
-    def __init__(self, obj: T_co) -> None:
+    def __init__(self, obj: T) -> None:
         super().__init__()
         self._obj: typing.Final = obj
 
-    async def async_resolve(self) -> T_co:
+    async def async_resolve(self) -> T:
         return self._obj
 
-    def sync_resolve(self) -> T_co:
+    def sync_resolve(self) -> T:
         return self._obj
