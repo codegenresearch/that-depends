@@ -9,22 +9,25 @@ import pytest
 from that_depends import BaseContainer, fetch_context_item, providers
 from that_depends.providers import container_context
 from that_depends.providers.base import ResourceContext
-from that_depends.providers.context_resources import sync_container_context
 
 
 logger = logging.getLogger(__name__)
 
 
 def create_sync_context_resource() -> typing.Iterator[str]:
-    logger.info("Resource initiated")
-    yield f"sync {uuid.uuid4()}"
-    logger.info("Resource destructed")
+    logger.info("Sync resource initiated")
+    try:
+        yield f"sync {uuid.uuid4()}"
+    finally:
+        logger.info("Sync resource destructed")
 
 
 async def create_async_context_resource() -> typing.AsyncIterator[str]:
     logger.info("Async resource initiated")
-    yield f"async {uuid.uuid4()}"
-    logger.info("Async resource destructed")
+    try:
+        yield f"async {uuid.uuid4()}"
+    finally:
+        logger.info("Async resource destructed")
 
 
 class DIContainer(BaseContainer):
@@ -36,13 +39,21 @@ class DIContainer(BaseContainer):
         async_=async_context_resource,
     )
 
+    @classmethod
+    async def init_context_resources(cls) -> None:
+        await cls.init_async_resources()
+
+    @classmethod
+    async def tear_down_context(cls) -> None:
+        await cls.tear_down()
+
 
 @pytest.fixture(autouse=True)
 async def _clear_di_container() -> typing.AsyncIterator[None]:
     try:
         yield
     finally:
-        await DIContainer.tear_down()
+        await DIContainer.tear_down_context()
 
 
 @pytest.fixture(params=[DIContainer.sync_context_resource, DIContainer.async_context_resource])
@@ -77,7 +88,7 @@ async def test_context_resource(context_resource: providers.ContextResource[str]
     assert await context_resource() is context_resource_result
 
 
-@sync_container_context()
+@container_context()
 def test_sync_context_resource(sync_context_resource: providers.ContextResource[str]) -> None:
     context_resource_result = sync_context_resource.sync_resolve()
 
@@ -85,10 +96,7 @@ def test_sync_context_resource(sync_context_resource: providers.ContextResource[
 
 
 async def test_async_context_resource_in_sync_context(async_context_resource: providers.ContextResource[str]) -> None:
-    with (
-        pytest.raises(RuntimeError, match="AsyncResource cannot be resolved in an sync context."),
-        sync_container_context(),
-    ):
+    with pytest.raises(RuntimeError, match="AsyncResource cannot be resolved in a sync context"), container_context():
         await async_context_resource()
 
 
@@ -132,8 +140,8 @@ async def test_context_resources_overriding(context_resource: providers.ContextR
 
 
 async def test_context_resources_init_and_tear_down() -> None:
-    await DIContainer.init_resources()
-    await DIContainer.tear_down()
+    await DIContainer.init_context_resources()
+    await DIContainer.tear_down_context()
 
 
 def test_context_resources_wrong_providers_init() -> None:
@@ -153,10 +161,10 @@ async def test_context_resource_with_dynamic_resource() -> None:
 
 
 async def test_early_exit_of_container_context() -> None:
-    with pytest.raises(RuntimeError, match="generator didn't stop"):
+    with pytest.raises(RuntimeError, match="Context is not set, call ``__aenter__`` first"):
         await container_context().__aexit__(None, None, None)
-    with pytest.raises(RuntimeError, match="generator didn't stop"):
-        sync_container_context().__exit__(None, None, None)
+    with pytest.raises(RuntimeError, match="Context is not set, call ``__enter__`` first"):
+        container_context().__exit__(None, None, None)
 
 
 async def test_resource_context_early_teardown() -> None:
