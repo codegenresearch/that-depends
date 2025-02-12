@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import logging
 import typing
+from unittest.mock import MagicMock
 
 from that_depends import BaseContainer, providers
 
@@ -66,4 +67,28 @@ class DIContainer(BaseContainer):
         async_resource=async_resource.cast,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
-    object = providers.Object(object())
+
+    # Mock providers
+    mock_sync_resource = providers.Resource(lambda: iter([datetime.datetime(2023, 1, 1, tzinfo=datetime.timezone.utc)]))
+    mock_async_resource = providers.Resource(lambda: (datetime.datetime(2023, 1, 1, tzinfo=datetime.timezone.utc),))
+    mock_simple_factory = providers.Factory(SimpleFactory, dep1="mock_text", dep2=999)
+    mock_async_factory = providers.AsyncFactory(async_factory, mock_async_resource.cast)
+    mock_dependent_factory = providers.Factory(
+        DependentFactory,
+        simple_factory=mock_simple_factory.cast,
+        sync_resource=mock_sync_resource.cast,
+        async_resource=mock_async_resource.cast,
+    )
+    mock_singleton = providers.Singleton(SingletonFactory, dep1=False)
+
+    def sync_resolve(self, provider: providers.Provider, override: typing.Optional[providers.Provider] = None) -> typing.Any:
+        if override:
+            if isinstance(provider, providers.AsyncProvider):
+                raise RuntimeError(f"Async provider {provider} cannot be resolved synchronously with override.")
+            return override.sync_resolve()
+        return provider.sync_resolve()
+
+    def async_resolve(self, provider: providers.Provider, override: typing.Optional[providers.Provider] = None) -> typing.Any:
+        if override:
+            return override.async_resolve()
+        return provider.async_resolve()
