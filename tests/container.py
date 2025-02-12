@@ -66,4 +66,3 @@ class DIContainer(BaseContainer):
         async_resource=async_resource.cast,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
-    object = providers.Object(object())
