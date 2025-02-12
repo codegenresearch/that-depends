@@ -66,4 +66,57 @@ class DIContainer(BaseContainer):
         async_resource=async_resource.cast,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
-    object = providers.Object(object())
+
+    _overrides: typing.Dict[str, typing.Any] = {}
+
+    @classmethod
+    def override_provider(cls, provider_name: str, override: typing.Any):
+        cls._overrides[provider_name] = override
+
+    @classmethod
+    async def get_provider(cls, provider_name: str, default: typing.Any = None):
+        if provider_name in cls._overrides:
+            provider = cls._overrides[provider_name]
+            if hasattr(provider, 'cast'):
+                return provider.cast()
+            return provider
+        return await getattr(cls, provider_name)()
+
+    @classmethod
+    async def sync_resource_override(cls) -> datetime.datetime:
+        return await cls.get_provider('sync_resource')
+
+    @classmethod
+    async def async_resource_override(cls) -> datetime.datetime:
+        return await cls.get_provider('async_resource')
+
+    @classmethod
+    async def simple_factory_override(cls) -> SimpleFactory:
+        return await cls.get_provider('simple_factory')
+
+    @classmethod
+    async def async_factory_override(cls) -> datetime.datetime:
+        return await cls.get_provider('async_factory')
+
+    @classmethod
+    async def dependent_factory_override(cls) -> DependentFactory:
+        return await cls.get_provider('dependent_factory')
+
+    @classmethod
+    async def singleton_override(cls) -> SingletonFactory:
+        return await cls.get_provider('singleton')
+
+    @classmethod
+    async def object_provider(cls, provider_name: str, default: typing.Any = None):
+        provider = await cls.get_provider(provider_name, default)
+        assert provider, f"Provider {provider_name} should not be None"
+        return provider
+
+    @classmethod
+    async def resolve(cls, factory_class: typing.Type):
+        provider_name = factory_class.__name__.lower()
+        return await cls.object_provider(provider_name)
+
+    @classmethod
+    async def resolver(cls, factory_class: typing.Type):
+        return cls.resolve(factory_class)
