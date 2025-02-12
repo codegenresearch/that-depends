@@ -6,9 +6,10 @@ import typing
 from contextlib import contextmanager
 
 
-T_co = typing.TypeVar("T_co", covariant=True)
+T = typing.TypeVar("T")
 R = typing.TypeVar("R")
 P = typing.ParamSpec("P")
+T_co = typing.TypeVar("T_co", covariant=True)
 
 
 class AbstractProvider(typing.Generic[T_co], abc.ABC):
@@ -118,10 +119,10 @@ class ResourceContext(typing.Generic[T_co]):
             raise RuntimeError(msg)
 
 
-class AbstractResource(AbstractProvider[T_co], abc.ABC):
+class AbstractResource(AbstractProvider[T], abc.ABC):
     def __init__(
         self,
-        creator: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]],
+        creator: typing.Callable[P, typing.Iterator[T] | typing.AsyncIterator[T]],
         *args: P.args,
         **kwargs: P.kwargs,
     ) -> None:
@@ -140,21 +141,21 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
         self._override = None
 
     def _is_creator_async(
-        self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.AsyncIterator[T_co]]]:
+        self, _: typing.Callable[P, typing.Iterator[T] | typing.AsyncIterator[T]]
+    ) -> typing.TypeGuard[typing.Callable[P, typing.AsyncIterator[T]]]:
         return self._is_async
 
     def _is_creator_sync(
-        self, _: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]]
-    ) -> typing.TypeGuard[typing.Callable[P, typing.Iterator[T_co]]]:
+        self, _: typing.Callable[P, typing.Iterator[T] | typing.AsyncIterator[T]]
+    ) -> typing.TypeGuard[typing.Callable[P, typing.Iterator[T]]]:
         return not self._is_async
 
     @abc.abstractmethod
-    def _fetch_context(self) -> ResourceContext[T_co]: ...
+    def _fetch_context(self) -> ResourceContext[T]: ...
 
-    async def async_resolve(self) -> T_co:
+    async def async_resolve(self) -> T:
         if self._override:
-            return typing.cast(T_co, self._override)
+            return typing.cast(T, self._override)
 
         context = self._fetch_context()
 
@@ -171,7 +172,7 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                 if self._is_creator_async(self._creator):
                     context.context_stack = contextlib.AsyncExitStack()
                     context.instance = typing.cast(
-                        T_co,
+                        T,
                         await context.context_stack.enter_async_context(
                             contextlib.asynccontextmanager(self._creator)(
                                 *[await x() if isinstance(x, AbstractProvider) else x for x in self._args],
@@ -193,11 +194,11 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                             },
                         ),
                     )
-            return typing.cast(T_co, context.instance)
+            return typing.cast(T, context.instance)
 
-    def sync_resolve(self) -> T_co:
+    def sync_resolve(self) -> T:
         if self._override:
-            return typing.cast(T_co, self._override)
+            return typing.cast(T, self._override)
 
         context = self._fetch_context()
         if context.instance is not None:
@@ -215,16 +216,16 @@ class AbstractResource(AbstractProvider[T_co], abc.ABC):
                     **{k: v.sync_resolve() if isinstance(v, AbstractProvider) else v for k, v in self._kwargs.items()},
                 ),
             )
-        return typing.cast(T_co, context.instance)
+        return typing.cast(T, context.instance)
 
 
-class AbstractFactory(AbstractProvider[T_co], abc.ABC):
+class AbstractFactory(AbstractProvider[T], abc.ABC):
     """Abstract Factory Class."""
 
     @property
-    def provider(self) -> typing.Callable[[], typing.Coroutine[typing.Any, typing.Any, T_co]]:
+    def provider(self) -> typing.Callable[[], typing.Coroutine[typing.Any, typing.Any, T]]:
         return self.async_resolve
 
     @property
-    def sync_provider(self) -> typing.Callable[[], T_co]:
+    def sync_provider(self) -> typing.Callable[[], T]:
         return self.sync_resolve
