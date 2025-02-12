@@ -6,8 +6,6 @@ from that_depends.providers.context_resources import (
     ContextResource,
     DIContextMiddleware,
     container_context,
-    fetch_context_item,
-    sync_container_context,
 )
 from that_depends.providers.factories import AsyncFactory, Factory
 from that_depends.providers.object import Object
@@ -18,10 +16,10 @@ from that_depends.providers.singleton import Singleton
 
 __all__ = [
     "AbstractProvider",
+    "AttrGetter",
     "AsyncContextResource",
     "AsyncFactory",
     "AsyncResource",
-    "AttrGetter",
     "ContextResource",
     "DIContextMiddleware",
     "Dict",
@@ -32,6 +30,8 @@ __all__ = [
     "Selector",
     "Singleton",
     "container_context",
-    "sync_container_context",
-    "fetch_context_item",
 ]
+
+import warnings
+
+warnings.warn("The use of fetch_context_item and sync_container_context is deprecated. Please use async context managers instead.", DeprecationWarning)
