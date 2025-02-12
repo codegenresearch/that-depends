@@ -12,7 +12,7 @@ from that_depends.providers.base import AbstractResource, ResourceContext
 
 
 logger: typing.Final = logging.getLogger(__name__)
-T_co = typing.TypeVar("T_co", covariant=True)
+T = typing.TypeVar("T")
 P = typing.ParamSpec("P")
 _CONTAINER_CONTEXT: typing.Final[ContextVar[dict[str, typing.Any]]] = ContextVar("CONTAINER_CONTEXT")
 AppType = typing.TypeVar("AppType")
@@ -29,13 +29,7 @@ ContextType = dict[str, typing.Any]
 class container_context(  # noqa: N801
     AbstractAsyncContextManager[ContextType], AbstractContextManager[ContextType]
 ):
-    """Manage the context of ContextResources.
-
-    Can be entered using ``async with container_context()`` or with ``with container_context()``
-    as async-context-manager or context-manager respectively.
-    When used as async-context-manager, it will allow setup & teardown of both sync and async resources.
-    When used as sync-context-manager, it will only allow setup & teardown of sync resources.
-    """
+    """Manage the context of ContextResources.\n\n    Can be entered using ``async with container_context()`` or with ``with container_context()``\n    as async-context-manager or context-manager respectively.\n    When used as async-context-manager, it will allow setup & teardown of both sync and async resources.\n    When used as sync-context-manager, it will only allow setup & teardown of sync resources.\n    """
 
     __slots__ = "_initial_context", "_context_token"
 
@@ -65,114 +59,4 @@ class container_context(  # noqa: N801
         try:
             for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
                 if isinstance(context_item, ResourceContext):
-                    # we don't need to handle the case where the ResourceContext is async
-                    context_item.sync_tear_down()
-
-        finally:
-            _CONTAINER_CONTEXT.reset(self._context_token)
-
-    async def __aexit__(
-        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, traceback: TracebackType | None
-    ) -> None:
-        if self._context_token is None:
-            msg = "Context is not set, call ``__aenter__`` first"
-            raise RuntimeError(msg)
-
-        try:
-            for context_item in reversed(_CONTAINER_CONTEXT.get().values()):
-                if not isinstance(context_item, ResourceContext):
-                    continue
-
-                if context_item.is_context_stack_async(context_item.context_stack):
-                    await context_item.tear_down()
-                else:
-                    context_item.sync_tear_down()
-        finally:
-            _CONTAINER_CONTEXT.reset(self._context_token)
-
-    def __call__(self, func: typing.Callable[P, T_co]) -> typing.Callable[P, T_co]:
-        if inspect.iscoroutinefunction(func):
-
-            @wraps(func)
-            async def _async_inner(*args: P.args, **kwargs: P.kwargs) -> T_co:
-                async with container_context(self._initial_context):
-                    return await func(*args, **kwargs)  # type: ignore[no-any-return]
-
-            return typing.cast(typing.Callable[P, T_co], _async_inner)
-
-        @wraps(func)
-        def _sync_inner(*args: P.args, **kwargs: P.kwargs) -> T_co:
-            with container_context(self._initial_context):
-                return func(*args, **kwargs)
-
-        return _sync_inner
-
-
-class DIContextMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
-        self.app: typing.Final = app
-
-    @container_context()
-    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        return await self.app(scope, receive, send)
-
-
-def _get_container_context() -> dict[str, typing.Any]:
-    try:
-        return _CONTAINER_CONTEXT.get()
-    except LookupError as exc:
-        msg = "Context is not set. Use container_context"
-        raise RuntimeError(msg) from exc
-
-
-def _is_container_context_async() -> bool:
-    """Check if the current container context is async.
-
-    :return: Whether the current container context is async.
-    :rtype: bool
-    """
-    return typing.cast(bool, _get_container_context().get(_ASYNC_CONTEXT_KEY, False))
-
-
-def fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401
-    return _get_container_context().get(key, default)
-
-
-class ContextResource(AbstractResource[T_co]):
-    __slots__ = (
-        "_is_async",
-        "_creator",
-        "_args",
-        "_kwargs",
-        "_override",
-        "_internal_name",
-    )
-
-    def __init__(
-        self,
-        creator: typing.Callable[P, typing.Iterator[T_co] | typing.AsyncIterator[T_co]],
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> None:
-        super().__init__(creator, *args, **kwargs)
-        self._internal_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"
-
-    def _fetch_context(self) -> ResourceContext[T_co]:
-        container_context = _get_container_context()
-        if resource_context := container_context.get(self._internal_name):
-            return typing.cast(ResourceContext[T_co], resource_context)
-
-        resource_context = ResourceContext(is_async=_is_container_context_async())
-        container_context[self._internal_name] = resource_context
-        return resource_context
-
-
-class AsyncContextResource(ContextResource[T_co]):
-    def __init__(
-        self,
-        creator: typing.Callable[P, typing.AsyncIterator[T_co]],
-        *args: P.args,
-        **kwargs: P.kwargs,
-    ) -> None:
-        warnings.warn("AsyncContextResource is deprecated, use ContextResource instead", RuntimeWarning, stacklevel=1)
-        super().__init__(creator, *args, **kwargs)
+                    # we don't need to handle the case where the ResourceContext is async\n                    context_item.sync_tear_down()\n\n        finally:\n            _CONTAINER_CONTEXT.reset(self._context_token)\n\n    async def __aexit__(\n        self, exc_type: type[BaseException] | None, exc_val: BaseException | None, traceback: TracebackType | None\n    ) -> None:\n        if self._context_token is None:\n            msg = "Context is not set, call ``__aenter__`` first"\n            raise RuntimeError(msg)\n\n        try:\n            for context_item in reversed(_CONTAINER_CONTEXT.get().values()):\n                if not isinstance(context_item, ResourceContext):\n                    continue\n\n                if context_item.is_context_stack_async(context_item.context_stack):\n                    await context_item.tear_down()\n                else:\n                    context_item.sync_tear_down()\n        finally:\n            _CONTAINER_CONTEXT.reset(self._context_token)\n\n    def __call__(self, func: typing.Callable[P, T]) -> typing.Callable[P, T]:\n        if inspect.iscoroutinefunction(func):\n\n            @wraps(func)\n            async def _async_inner(*args: P.args, **kwargs: P.kwargs) -> T:\n                async with container_context(self._initial_context):\n                    return await func(*args, **kwargs)  # type: ignore[no-any-return]\n\n            return typing.cast(typing.Callable[P, T], _async_inner)\n\n        @wraps(func)\n        def _sync_inner(*args: P.args, **kwargs: P.kwargs) -> T:\n            with container_context(self._initial_context):\n                return func(*args, **kwargs)\n\n        return _sync_inner\n\n\nclass DIContextMiddleware:\n    def __init__(self, app: ASGIApp) -> None:\n        self.app: typing.Final = app\n\n    @container_context()\n    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:\n        return await self.app(scope, receive, send)\n\n\ndef _get_container_context() -> dict[str, typing.Any]:\n    try:\n        return _CONTAINER_CONTEXT.get()\n    except LookupError as exc:\n        msg = "Context is not set. Use container_context"\n        raise RuntimeError(msg) from exc\n\n\ndef _is_container_context_async() -> bool:\n    """Check if the current container context is async.\n\n    :return: Whether the current container context is async.\n    :rtype: bool\n    """\n    return typing.cast(bool, _get_container_context().get(_ASYNC_CONTEXT_KEY, False))\n\n\ndef fetch_context_item(key: str, default: typing.Any = None) -> typing.Any:  # noqa: ANN401\n    return _get_container_context().get(key, default)\n\n\nclass ContextResource(AbstractResource[T]):\n    __slots__ = (\n        "_is_async",\n        "_creator",\n        "_args",\n        "_kwargs",\n        "_override",\n        "_internal_name",\n    )\n\n    def __init__(\n        self,\n        creator: typing.Callable[P, typing.Iterator[T] | typing.AsyncIterator[T]],\n        *args: P.args,\n        **kwargs: P.kwargs,\n    ) -> None:\n        super().__init__(creator, *args, **kwargs)\n        self._internal_name: typing.Final = f"{creator.__name__}-{uuid.uuid4()}"\n\n    def _fetch_context(self) -> ResourceContext[T]:\n        container_context = _get_container_context()\n        if resource_context := container_context.get(self._internal_name):\n            return typing.cast(ResourceContext[T], resource_context)\n\n        resource_context = ResourceContext(is_async=_is_container_context_async())\n        container_context[self._internal_name] = resource_context\n        return resource_context\n\n\nclass AsyncContextResource(ContextResource[T]):\n    def __init__(\n        self,\n        creator: typing.Callable[P, typing.AsyncIterator[T]],\n        *args: P.args,\n        **kwargs: P.kwargs,\n    ) -> None:\n        warnings.warn("AsyncContextResource is deprecated, use ContextResource instead", RuntimeWarning, stacklevel=1)\n        super().__init__(creator, *args, **kwargs)
