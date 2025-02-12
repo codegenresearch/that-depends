@@ -3,35 +3,35 @@ import typing
 from that_depends.providers.base import AbstractProvider
 
 
-T_co = typing.TypeVar("T_co", covariant=True)
+T = typing.TypeVar("T")
 
 
-class List(AbstractProvider[list[T_co]]):
+class List(AbstractProvider[list[T]]):
     __slots__ = ("_providers",)
 
-    def __init__(self, *providers: AbstractProvider[T_co]) -> None:
+    def __init__(self, *providers: AbstractProvider[T]) -> None:
         super().__init__()
         self._providers: typing.Final = providers
 
-    async def async_resolve(self) -> list[T_co]:
+    async def async_resolve(self) -> list[T]:
         return [await x.async_resolve() for x in self._providers]
 
-    def sync_resolve(self) -> list[T_co]:
+    def sync_resolve(self) -> list[T]:
         return [x.sync_resolve() for x in self._providers]
 
-    async def __call__(self) -> list[T_co]:
+    async def __call__(self) -> list[T]:
         return await self.async_resolve()
 
 
-class Dict(AbstractProvider[dict[str, T_co]]):
+class Dict(AbstractProvider[dict[str, T]]):
     __slots__ = ("_providers",)
 
-    def __init__(self, **providers: AbstractProvider[T_co]) -> None:
+    def __init__(self, **providers: AbstractProvider[T]) -> None:
         super().__init__()
         self._providers: typing.Final = providers
 
-    async def async_resolve(self) -> dict[str, T_co]:
+    async def async_resolve(self) -> dict[str, T]:
         return {key: await provider.async_resolve() for key, provider in self._providers.items()}
 
-    def sync_resolve(self) -> dict[str, T_co]:
+    def sync_resolve(self) -> dict[str, T]:
         return {key: provider.sync_resolve() for key, provider in self._providers.items()}
