@@ -61,9 +61,15 @@ class DIContainer(BaseContainer):
     async_factory = providers.AsyncFactory(async_factory, async_resource.cast)
     dependent_factory = providers.Factory(
         DependentFactory,
-        simple_factory=simple_factory.cast,
-        sync_resource=sync_resource.cast,
-        async_resource=async_resource.cast,
+        simple_factory=simple_factory.provider,
+        sync_resource=sync_resource.provider,
+        async_resource=async_resource.provider,
     )
     singleton = providers.Singleton(SingletonFactory, dep1=True)
-    object = providers.Object(object())
+
+    # Adding object provider for dependency injection
+    free_factory = providers.Factory(FreeFactory, dependent_factory=dependent_factory.provider, sync_resource=sync_resource.provider)
+
+    # Overriding existing providers with new instances
+    sync_resource = providers.Resource(create_sync_resource)
+    async_resource = providers.Resource(create_async_resource)
